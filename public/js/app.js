@@ -9,7 +9,7 @@ const state = {
   autoScroll: true,
   streamWs: null,
   logsWs: null,
-  scale: 0.90, // Default 90%
+  scale: 0.88, // Default 88%
   isMouseDown: false,
   touchStart: { x: 0, y: 0, time: 0 },
   activeLogFilter: 'all',
@@ -163,11 +163,16 @@ function updateClock() {
 }
 
 function applyZoom(val) {
-  const numericVal = parseInt(val, 10) || 80;
+  const numericVal = parseInt(val, 10) || 88;
   state.scale = numericVal / 100;
   
   const zoomVal = document.getElementById('zoomVal');
   if (zoomVal) zoomVal.textContent = `${numericVal}%`;
+
+  const zoomSlider = document.getElementById('zoomSlider') || el.zoomSlider;
+  if (zoomSlider && parseInt(zoomSlider.value, 10) !== numericVal) {
+    zoomSlider.value = numericVal;
+  }
   
   const phoneFrame = el.phoneFrame || document.getElementById('phoneFrame');
   if (phoneFrame) phoneFrame.style.transform = `scale(${state.scale})`;
@@ -1367,7 +1372,10 @@ function togglePhoneRotation(forceState) {
     frame.style.height = '820px';
     showToast('Chế độ: Màn hình dọc (Portrait 390x820)', 'info');
   }
-  applyZoom(state.scale ? Math.round(state.scale * 100) : 80);
+  
+  // Consistently preserve the active zoom percentage (default 88%)
+  const currentZoomPercent = Math.round((state.scale || 0.88) * 100);
+  applyZoom(currentZoomPercent);
 }
 window.togglePhoneRotation = togglePhoneRotation;
 
