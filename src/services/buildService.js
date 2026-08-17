@@ -329,6 +329,14 @@ class BuildService {
 
     this.broadcastLog(`🔨 Đang thực thi lệnh Gradle: ${gradlewCmd} ${gradleArgs.join(' ')}...`, 'info');
 
+    if (options.openTerminal !== false && isWindows) {
+      const termTitle = `📦 ${taskName.toUpperCase()} - [${path.basename(projectPath)}]`;
+      const fullCmd = `start "${termTitle}" cmd.exe /k "title ${termTitle} && color 0A && echo ======================================================== && echo 🚀 DANG XUAT GOI ANDROID: ${taskName.toUpperCase()} && echo 📁 Thu muc: ${androidDir} && echo 🔨 Lenh: ${gradlewCmd} ${gradleArgs.join(' ')} && echo 💡 Nhan Ctrl+C de dung tien trinh bat ky luc nao! && echo ======================================================== && echo. && cd /d \"${androidDir}\" && ${gradlewCmd} ${gradleArgs.join(' ')}"`;
+      exec(fullCmd, { cwd: androidDir });
+      this.broadcastLog(`🖥️ [Native Terminal] Đã mở cửa sổ Terminal riêng trên Desktop để chạy: ${gradlewCmd} ${gradleArgs.join(' ')}`, 'warn');
+      this.broadcastLog(`💡 Bạn có thể theo dõi tiến trình trực quan trên cửa sổ Terminal và nhấn Ctrl+C để dừng tùy ý!`, 'info');
+    }
+
     const buildSuccess = await new Promise((resolve) => {
       const proc = spawn(gradlewCmd, gradleArgs, {
         cwd: androidDir,

@@ -1368,15 +1368,17 @@ async function startExportPackage() {
   const progressText = document.getElementById('packageProgressText');
   const resultBox = document.getElementById('packageResultBox');
   const chkClean = document.getElementById('chkCleanBuildPackage');
+  const chkOpenTerminal = document.getElementById('chkOpenTerminal');
 
   const projectPath = state.projectPath;
   const type = selectedPackageType;
   const clean = chkClean ? chkClean.checked : false;
+  const openTerminal = chkOpenTerminal ? chkOpenTerminal.checked : true;
 
   if (startBtn) startBtn.disabled = true;
   if (progressBox) progressBox.style.display = 'block';
   if (resultBox) resultBox.style.display = 'none';
-  if (progressText) progressText.textContent = `Đang thực thi Gradle build (${type})... Vui lòng theo dõi tab Build Console!`;
+  if (progressText) progressText.textContent = `Đang thực thi Gradle build (${type})... Vui lòng theo dõi cửa sổ Terminal hoặc tab Build Console!`;
 
   switchTab('tab-build');
   showToast(`🚀 Đang đóng gói ${type.toUpperCase()}...`);
@@ -1385,7 +1387,7 @@ async function startExportPackage() {
     const res = await fetch('/api/build/package', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ projectPath, type, clean })
+      body: JSON.stringify({ projectPath, type, clean, openTerminal })
     });
     const data = await res.json();
 
@@ -1412,6 +1414,34 @@ async function startExportPackage() {
   }
 }
 window.startExportPackage = startExportPackage;
+
+async function cleanAndRebuild() {
+  const projectPath = state.projectPath;
+  showToast('🧹 Đang dọn dẹp Cache & Biên dịch lại...');
+
+  // If project has android directory, launch clean in terminal too!
+  if (state.projectInfo?.hasAndroid) {
+    try {
+      await fetch('/api/terminal/open-and-run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cwd: `${projectPath}\\android`,
+          command: 'gradlew.bat clean',
+          title: `🧹 Gradle Clean - [${state.projectInfo.name || 'App'}]`
+        })
+      });
+      appendBuildLog({
+        level: 'info',
+        message: '🖥️ [Terminal] Đã mở cửa sổ Terminal ngoài để chạy lệnh "gradlew.bat clean"...'
+      });
+    } catch (e) {}
+  }
+
+  // Then start standard build
+  startBuild();
+}
+window.cleanAndRebuild = cleanAndRebuild;
 
 async function revealPackageFile() {
   if (!lastExportedFilePath) return;

@@ -165,6 +165,27 @@ app.get('/api/build/download', (req, res) => {
   res.download(filePath);
 });
 
+// Run commands in native external Terminal window
+app.post('/api/terminal/open-and-run', (req, res) => {
+  const { cwd, command, title } = req.body;
+  const targetDir = cwd || defaultProjectPath;
+  const cmdToRun = command || 'gradlew.bat clean';
+  const termTitle = title || 'Android Terminal';
+
+  const { exec } = require('child_process');
+  if (process.platform === 'win32') {
+    const fullCmd = `start "${termTitle}" cmd.exe /k "title ${termTitle} && color 0B && echo ======================================================== && echo 🚀 THUC THI LENH TRUC TIEP: && echo 📁 Thu muc: ${targetDir} && echo 🔨 Lenh: ${cmdToRun} && echo 💡 Nhan Ctrl+C de dung tien trinh bat ky luc nao! && echo ======================================================== && echo. && cd /d \"${targetDir.replace(/\//g, '\\')}\" && ${cmdToRun}"`;
+    exec(fullCmd, { cwd: targetDir }, (err) => {
+      if (err) return res.status(500).json({ success: false, error: err.message });
+      res.json({ success: true, message: 'Đã mở cửa sổ Terminal ngoài' });
+    });
+  } else {
+    exec(`open -a Terminal "${targetDir}"`, () => {
+      res.json({ success: true });
+    });
+  }
+});
+
 // Project Management & Native Folder Dialog
 let activeDialogProcess = null;
 

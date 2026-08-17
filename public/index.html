@@ -314,7 +314,7 @@
             </div>
           </button>
 
-          <button class="btn btn-outline vertical-btn-action" id="btnCleanBuild" onclick="startBuild()" title="Dọn dẹp Cache & Biên dịch lại">
+          <button class="btn btn-outline vertical-btn-action" id="btnCleanBuild" onclick="cleanAndRebuild()" title="Dọn dẹp Cache & Biên dịch lại">
             <div class="vertical-btn-content">
               <span style="font-size: 1.05rem;">🧹</span>
               <div class="vertical-btn-text">
@@ -417,12 +417,21 @@
 
         </div>
 
-        <!-- Clean build toggle -->
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding: 8px 12px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid var(--border-glass);">
-          <input type="checkbox" id="chkCleanBuildPackage" style="accent-color: var(--cyan-neon);">
-          <label for="chkCleanBuildPackage" style="font-size: 0.78rem; color: var(--text-main); cursor: pointer;">
-            🧹 Dọn dẹp cache Gradle trước khi build (Clean Build - Tránh lỗi cache cũ)
-          </label>
+        <!-- Clean build & Open Terminal toggles -->
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px;">
+          <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid var(--border-glass);">
+            <input type="checkbox" id="chkCleanBuildPackage" style="accent-color: var(--cyan-neon);">
+            <label for="chkCleanBuildPackage" style="font-size: 0.78rem; color: var(--text-main); cursor: pointer;">
+              🧹 Dọn dẹp cache Gradle trước khi build (Clean Build - Tránh lỗi cache cũ)
+            </label>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(16, 185, 129, 0.08); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.3);">
+            <input type="checkbox" id="chkOpenTerminal" checked style="accent-color: var(--emerald-neon);">
+            <label for="chkOpenTerminal" style="font-size: 0.78rem; color: #6ee7b7; cursor: pointer; font-weight: bold;">
+              🖥️ Mở cửa sổ Terminal riêng biệt trên Desktop (Dễ theo dõi trực quan & bấm Ctrl+C dừng tùy ý)
+            </label>
+          </div>
         </div>
 
         <!-- Result Box (Hidden until build completes) -->
