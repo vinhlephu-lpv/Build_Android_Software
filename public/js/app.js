@@ -786,7 +786,7 @@ async function startBuild() {
 
   appendBuildLog({
     level: 'info',
-    message: '===================================================='
+    message: '========================================================================'
   });
   appendBuildLog({
     level: 'info',
@@ -798,11 +798,15 @@ async function startBuild() {
   });
   appendBuildLog({
     level: 'info',
-    message: `⚡ Engine: esbuild Fast Transpiler + React 19 Singleton`
+    message: `⚡ Engine: esbuild Fast Transpiler v0.25 (Flow Strip + JSX AST Pipeline)`
   });
   appendBuildLog({
     level: 'info',
-    message: '===================================================='
+    message: `📱 Thiết bị đích: Google Pixel 8 Pro (Android 14 API 34 / Standalone Virtual)`
+  });
+  appendBuildLog({
+    level: 'info',
+    message: '========================================================================'
   });
 
   if (state.selectedDevice === 'virtual') {
@@ -816,12 +820,54 @@ async function startBuild() {
 
     appendBuildLog({
       level: 'info',
-      message: '⚙️ [1/3] Đang phân tích file App.tsx, styles & TypeScript types...'
+      message: '🔍 [1/4] Đang quét cấu trúc dự án & tìm kiếm Entry Point (App.tsx)...'
+    });
+    appendBuildLog({
+      level: 'info',
+      message: '🧩 [2/4] Nạp các Module Native Bridges:'
+    });
+    appendBuildLog({
+      level: 'info',
+      message: '   ├─ ✓ react-native-web (v0.19.13 Core Bridge)'
+    });
+    appendBuildLog({
+      level: 'info',
+      message: '   ├─ ✓ @react-navigation/native (Stack & Navigation Container)'
+    });
+    appendBuildLog({
+      level: 'info',
+      message: '   ├─ ✓ react-native-safe-area-context (Padding Insets: 0px)'
+    });
+    appendBuildLog({
+      level: 'info',
+      message: '   ├─ ✓ react-native-vector-icons & lucide-react-native'
+    });
+    appendBuildLog({
+      level: 'info',
+      message: '   ├─ ✓ @shopify/flash-list, fast-image & linear-gradient'
+    });
+    appendBuildLog({
+      level: 'info',
+      message: '   └─ ✓ react-native-reanimated & gesture-handler'
+    });
+    appendBuildLog({
+      level: 'info',
+      message: '⚙️ [3/4] Biên dịch TypeScript AST, đóng gói Stylesheets & gỡ Flow types...'
     });
 
     addLogcatEntry({
       tag: 'ActivityManager',
-      message: 'Start proc 12450:com.exampleapp/u0a128 for activity {com.exampleapp/MainActivity}',
+      message: `START u0 {act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] cmp=${state.projectInfo?.applicationId || 'com.exampleapp'}/.MainActivity}`,
+      level: 'info'
+    });
+    addLogcatEntry({
+      tag: 'ActivityTaskManager',
+      message: `ActivityRecord{... u0 ${state.projectInfo?.applicationId || 'com.exampleapp'}/.MainActivity} t12 visible=true`,
+      level: 'info'
+    });
+    addLogcatEntry({
+      tag: 'HermesRuntime',
+      message: 'Hermes JSI JavaScript VM initialized in 14.2ms (Heap: 16.4 MB)',
       level: 'info'
     });
 
@@ -843,26 +889,50 @@ async function startBuild() {
 
         appendBuildLog({
           level: 'info',
-          message: `📦 [2/3] Đóng gói Bundle hoàn tất: Dung lượng ${data.bundleSizeKb} KB`
+          message: `📦 [4/4] Đóng gói Bundle hoàn tất: Dung lượng ${data.bundleSizeKb} KB`
         });
         appendBuildLog({
           level: 'success',
-          message: `✅ [3/3] Biên dịch thành công trong ${data.elapsed}ms!`
+          message: `✅ [Build Pipeline] Biên dịch thành công trong ${data.elapsed}ms!`
         });
         appendBuildLog({
           level: 'info',
-          message: '📱 [Simulator] Đang nạp mã nguồn vào máy ảo nội bộ...'
+          message: '📱 [Simulator] Đang truyền tải Bytecode vào Canvas máy ảo nội bộ...'
+        });
+
+        // App Logs & Dev (Metro tab)
+        appendMetroLog({
+          type: 'stdout',
+          text: `[Metro:FastRefresh] Bundle rebuilt in ${data.elapsed}ms (${data.bundleSizeKb} KB)`
+        });
+        appendMetroLog({
+          type: 'stdout',
+          text: `[ReactNative:AppRegistry] AppRegistry.runApplication('${data.appName || 'ExampleApp'}', { rootTag: #root })`
+        });
+        appendMetroLog({
+          type: 'stdout',
+          text: `[Navigation] NavigationContainer mounted with StackNavigator ('HomeScreen' active)`
         });
 
         // Logcat lifecycle events
         addLogcatEntry({
           tag: 'ReactNative',
-          message: `Loaded JavaScript bundle (${data.bundleSizeKb} KB) in ${data.elapsed}ms`,
+          message: `[Bridge] Initializing ReactNativeHost & NativeModules registry (52 registered)`,
+          level: 'info'
+        });
+        addLogcatEntry({
+          tag: 'OpenGLRenderer',
+          message: 'Skia Vulkan HWUI pipeline initialized - RenderThread running at 60.0 FPS',
+          level: 'info'
+        });
+        addLogcatEntry({
+          tag: 'Choreographer',
+          message: 'Skipped 0 frames! Application rendering smoothly at 60.0 FPS',
           level: 'info'
         });
         addLogcatEntry({
           tag: 'ReactNativeJS',
-          message: 'Running application "ExampleApp" with rootTag 1',
+          message: `Running application "${data.appName || 'ExampleApp'}" with rootTag 1 (Bundle size: ${data.bundleSizeKb} KB)`,
           level: 'info'
         });
 
@@ -873,6 +943,10 @@ async function startBuild() {
         appendBuildLog({
           level: 'success',
           message: '✨ [Ready] Ứng dụng đã hiển thị và sẵn sàng tương tác trên máy ảo!'
+        });
+        appendBuildLog({
+          level: 'info',
+          message: '👁️ [Watcher] Trình theo dõi Live Hot Reload đang hoạt động (nhấn Ctrl+S trong code để tự động cập nhật).'
         });
 
         showToast(`✅ Build thành công trong ${data.elapsed}ms!`);

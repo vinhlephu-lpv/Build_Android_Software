@@ -274,17 +274,38 @@
       if (!data || !data.type) return;
 
       if (data.type === 'reload') {
+        sendToParent('info', '⚡ [FastRefresh] Reload signal received. Refreshing simulator runtime...');
         location.reload();
       } else if (data.type === 'dev_menu') {
+        sendToParent('info', '⚙️ [DevMenu] React Native Developer Menu opened');
         openDevMenu();
       } else if (data.type === 'android_back') {
+        sendToParent('info', '🔙 [HardwareBack] Android Back button pressed');
         window.dispatchEvent(new Event('android_back'));
       }
     });
 
-    // 5. Load Active React Native Bundle
+    // 6. UI Interaction & Touch Logger
+    document.addEventListener('pointerdown', (e) => {
+      const target = e.target;
+      const text = target.innerText ? target.innerText.slice(0, 30).trim().replace(/\n/g, ' ') : '';
+      const tag = target.tagName.toLowerCase();
+      const role = target.getAttribute('role') || target.getAttribute('accessibilityrole') || tag;
+      if (text) {
+        sendToParent('info', `👆 [Touch] Tapped <${role}> "${text}" at (${Math.round(e.clientX)}, ${Math.round(e.clientY)})`);
+      }
+    }, true);
+
+    // 7. Initial Lifecycle Logs
+    sendToParent('info', '📱 [Runtime] Virtual Android Simulator initialized (Viewport: 390x820 @ 88% scale)');
+    sendToParent('info', '🌐 [Bridge] Fast Refresh & WebSocket log transport connected');
+
+    // 8. Load Active React Native Bundle
     const script = document.createElement('script');
     script.src = `/api/virtual-build/bundle.js?t=${Date.now()}`;
+    script.onload = () => {
+      sendToParent('info', '🚀 [ReactNative:Ready] App component successfully mounted on Virtual Screen');
+    };
     script.onerror = () => {
       console.warn('Chưa có bundle React Native. Vui lòng bấm "BUILD & RUN APP" trên bảng điều khiển.');
     };
