@@ -795,7 +795,7 @@ html, body {
 
 .workspace-main-split {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   flex: 1;
   min-height: 0;
   height: 100%;
@@ -812,41 +812,44 @@ html, body {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Vertical Action Sidebar on Right */
+/* Ultra-Compact Vertical Action Sidebar on Right */
 .vertical-action-sidebar {
-  width: 175px;
+  width: 68px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
   height: 100%;
 }
 
 .vertical-btn-build {
-  padding: 16px 12px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  background: linear-gradient(135deg, #00f0ff 0%, #00b4d8 100%);
-  color: #06080d;
-  box-shadow: 0 4px 20px rgba(0, 240, 255, 0.35);
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.vertical-btn-build:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 25px rgba(0, 240, 255, 0.5);
-}
-
-.vertical-btn-action {
-  padding: 12px 10px;
+  padding: 10px 2px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
+  min-height: 62px;
+  background: linear-gradient(135deg, #00f0ff 0%, #00b4d8 100%);
+  color: #06080d;
+  box-shadow: 0 4px 15px rgba(0, 240, 255, 0.35);
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.vertical-btn-build:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 240, 255, 0.5);
+}
+
+.vertical-btn-action {
+  padding: 8px 2px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 48px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -858,60 +861,48 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   text-align: center;
 }
 .vertical-btn-text {
   display: flex;
   flex-direction: column;
   align-items: center;
-  line-height: 1.2;
+  line-height: 1.1;
 }
 .vertical-btn-text strong {
-  font-size: 0.86rem;
+  font-size: 0.72rem;
   font-weight: 800;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 .vertical-btn-text small {
-  font-size: 0.65rem;
+  font-size: 0.58rem;
   opacity: 0.85;
 }
 
 .watcher-status-card {
   margin-top: auto;
-  background: rgba(13, 19, 32, 0.85);
+  background: rgba(13, 19, 32, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 10px;
+  border-radius: 8px;
+  padding: 6px 2px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 3px;
   text-align: center;
 }
-.watcher-status-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  color: var(--emerald-neon);
-  font-size: 0.76rem;
-}
 .pulse-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--emerald-neon);
-  box-shadow: 0 0 8px var(--emerald-neon);
+  box-shadow: 0 0 6px var(--emerald-neon);
   animation: pulseGlow 1.5s infinite;
 }
 @keyframes pulseGlow {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.4; transform: scale(0.85); }
-}
-.watcher-status-desc {
-  font-size: 0.64rem;
-  color: var(--text-dim);
-  line-height: 1.2;
 }
 
 .input-with-btn {

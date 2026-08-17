@@ -279,51 +279,51 @@
           </div>
         </div>
 
-        <!-- Right Column: Vertical Action Sidebar -->
+        <!-- Right Column: Ultra-Compact Vertical Action Sidebar -->
         <div class="vertical-action-sidebar">
-          <button class="btn btn-success btn-glow vertical-btn-build" id="btnBuildAndRun" onclick="startBuild()">
+          <button class="btn btn-success btn-glow vertical-btn-build" id="btnBuildAndRun" onclick="startBuild()" title="Biên dịch & hiển thị ứng dụng lên máy ảo">
             <div class="vertical-btn-content">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                 <polygon points="5 3 19 12 5 21 5 3"></polygon>
               </svg>
               <div class="vertical-btn-text">
-                <strong>BUILD & RUN</strong>
-                <small id="buildStatusSubtitle">Biên dịch tức thì</small>
+                <strong>BUILD</strong>
+                <small id="buildStatusSubtitle">& RUN</small>
               </div>
             </div>
           </button>
 
-          <button class="btn btn-warning vertical-btn-action" id="btnToggleMetro" onclick="reloadApp()">
+          <button class="btn btn-warning vertical-btn-action" id="btnToggleMetro" onclick="reloadApp()" title="Tải lại mã nguồn ứng dụng">
             <div class="vertical-btn-content">
-              <span class="metro-toggle-icon" style="font-size: 1.2rem;">⚡</span>
+              <span class="metro-toggle-icon" style="font-size: 1.15rem;">⚡</span>
               <div class="vertical-btn-text">
-                <strong id="btnMetroText">RELOAD APP</strong>
-                <small>Tải lại mã nguồn</small>
+                <strong id="btnMetroText">RELOAD</strong>
               </div>
             </div>
           </button>
 
-          <button class="btn btn-outline vertical-btn-action" id="btnCleanBuild" onclick="startBuild()" title="Dọn dẹp và biên dịch lại">
+          <button class="btn btn-outline vertical-btn-action" id="btnCleanBuild" onclick="startBuild()" title="Dọn dẹp Cache & Biên dịch lại">
             <div class="vertical-btn-content">
-              <span style="font-size: 1.1rem;">🧹</span>
+              <span style="font-size: 1.05rem;">🧹</span>
               <div class="vertical-btn-text">
-                <strong>Rebuild Cache</strong>
-                <small>Dọn cache & build</small>
+                <strong>CACHE</strong>
               </div>
             </div>
           </button>
 
-          <button class="btn btn-danger vertical-btn-action" id="btnCancelBuild" onclick="cancelBuild()" style="display: none;">
-            ⛔ Hủy tiến trình
+          <button class="btn btn-danger vertical-btn-action" id="btnCancelBuild" onclick="cancelBuild()" style="display: none;" title="Hủy tiến trình biên dịch">
+            <div class="vertical-btn-content">
+              <span style="font-size: 1rem;">⛔</span>
+              <div class="vertical-btn-text">
+                <strong>HỦY</strong>
+              </div>
+            </div>
           </button>
 
-          <!-- Live Watcher Badge -->
-          <div class="watcher-status-card">
-            <div class="watcher-status-header">
-              <span class="pulse-dot"></span>
-              <strong>Live Hot Reload</strong>
-            </div>
-            <span class="watcher-status-desc">Tự cập nhật khi bấm Save (Ctrl+S)</span>
+          <!-- Live Watcher Mini Badge -->
+          <div class="watcher-status-card" title="Tự động cập nhật tức thì khi lưu file (Ctrl+S)">
+            <span class="pulse-dot"></span>
+            <strong style="font-size: 0.58rem; color: var(--emerald-neon); letter-spacing: 0.3px;">HOT SYNC</strong>
           </div>
         </div>
 
