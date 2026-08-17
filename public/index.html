@@ -130,7 +130,7 @@
     <!-- RIGHT PANEL: Project Settings, Build Engine & Developer Console -->
     <section class="dev-workspace-panel">
       
-      <!-- Project & Build Controls Card -->
+      <!-- Top Project Header Card -->
       <div class="card project-control-card">
         <div class="card-header">
           <div class="card-title">
@@ -143,73 +143,79 @@
           </div>
         </div>
 
-        <div class="card-body">
-          <div class="form-row">
-            <div class="input-group">
-              <label for="inputProjectPath">Thư mục dự án:</label>
-              <div class="input-with-btn">
-                <input type="text" id="inputProjectPath" class="text-input" placeholder="d:\My_Software\ExampleApp" onchange="onProjectPathChanged(this.value)">
-                <button class="btn btn-secondary btn-sm" id="btnInspectProject" onclick="inspectProject()">Kiểm tra</button>
-                <div class="dropdown-wrapper">
-                  <button class="btn btn-outline btn-sm icon-btn-dots" id="btnProjectOptions" onclick="toggleProjectMenu(event)" title="Tùy chọn mở thư mục">
-                    <span>⋮</span>
-                  </button>
-                  <div class="dropdown-menu" id="projectDropdownMenu">
-                    <button class="dropdown-item" onclick="browseProjectFolder()">
-                      <span>📂 Chọn thư mục từ máy tính...</span>
-                    </button>
-                    <button class="dropdown-item" onclick="pasteProjectFromClipboard()">
-                      <span>📋 Dán đường dẫn từ Clipboard</span>
-                    </button>
-                    <div class="dropdown-divider"></div>
-                    <div class="dropdown-header">Gần đây:</div>
-                    <div id="recentProjectsList"></div>
-                    <div class="dropdown-divider"></div>
-                    <button class="dropdown-item text-danger" onclick="resetDefaultProjectPath()">
-                      <span>🔄 Đặt lại mặc định (ExampleApp)</span>
-                    </button>
-                  </div>
-                </div>
-                <input type="file" id="folderPickerInput" webkitdirectory directory style="display: none;" onchange="onFolderPicked(event)">
+        <div class="card-body project-path-body">
+          <div class="input-with-btn">
+            <input type="text" id="inputProjectPath" class="text-input" placeholder="d:\My_Software\ExampleApp" onchange="onProjectPathChanged(this.value)">
+            <button class="btn btn-secondary btn-sm" id="btnInspectProject" onclick="inspectProject()">Kiểm tra</button>
+            <div class="dropdown-wrapper">
+              <button class="btn btn-outline btn-sm icon-btn-dots" id="btnProjectOptions" onclick="toggleProjectMenu(event)" title="Tùy chọn mở thư mục">
+                <span>⋮</span>
+              </button>
+              <div class="dropdown-menu" id="projectDropdownMenu">
+                <button class="dropdown-item" onclick="browseProjectFolder()">
+                  <span>📂 Chọn thư mục từ máy tính...</span>
+                </button>
+                <button class="dropdown-item" onclick="pasteProjectFromClipboard()">
+                  <span>📋 Dán đường dẫn từ Clipboard</span>
+                </button>
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-header">Gần đây:</div>
+                <div id="recentProjectsList"></div>
+                <div class="dropdown-divider"></div>
+                <button class="dropdown-item text-danger" onclick="resetDefaultProjectPath()">
+                  <span>🔄 Đặt lại mặc định (ExampleApp)</span>
+                </button>
               </div>
+            </div>
+            <input type="file" id="folderPickerInput" webkitdirectory directory style="display: none;" onchange="onFolderPicked(event)">
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Workspace Split (Console on Left/Top, Vertical Actions on Right) -->
+      <div class="workspace-main-split">
+        
+        <!-- Left/Center Column: Developer Console (Tabs at Top) -->
+        <div class="card console-card">
+          <div class="console-tab-header">
+            <div class="console-tabs">
+              <button class="tab-btn active" data-tab="tab-build" onclick="switchTab('tab-build')">
+                <span class="tab-dot dot-yellow"></span>
+                <span>Build Console</span>
+              </button>
+              <button class="tab-btn" data-tab="tab-metro" onclick="switchTab('tab-metro')">
+                <span class="tab-dot dot-green"></span>
+                <span>App Logs & Dev</span>
+              </button>
+              <button class="tab-btn" data-tab="tab-logcat" onclick="switchTab('tab-logcat')">
+                <span class="tab-dot dot-cyan"></span>
+                <span>Android Logcat</span>
+              </button>
+              <button class="tab-btn" data-tab="tab-info" onclick="switchTab('tab-info')">
+                <span class="tab-dot dot-purple"></span>
+                <span>Thông tin môi trường</span>
+              </button>
+            </div>
+
+            <div class="console-actions">
+              <!-- Filter for Logcat -->
+              <div class="logcat-filter-group" id="logcatFilters" style="display: none;">
+                <select id="logLevelSelect" class="select-input-sm">
+                  <option value="all">Tất cả Logs</option>
+                  <option value="rn" selected>Chỉ React Native (JS)</option>
+                  <option value="error">Chỉ Lỗi (Error)</option>
+                  <option value="warn">Cảnh báo (Warn)</option>
+                </select>
+                <input type="text" id="logSearchInput" placeholder="Tìm kiếm log..." class="text-input-sm">
+              </div>
+
+              <button class="icon-btn-sm" id="btnClearLogs" onclick="clearCurrentLogs()" title="Xóa logs hiện tại">🗑️</button>
+              <button class="icon-btn-sm active" id="btnToggleAutoScroll" onclick="toggleAutoScroll()" title="Tự động cuộn xuống dưới">⬇️</button>
             </div>
           </div>
 
-          <!-- Action Buttons Grid -->
-          <div class="action-buttons-grid">
-            <button class="btn btn-success btn-lg btn-glow" id="btnBuildAndRun" onclick="startBuild()">
-              <div class="btn-content">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                </svg>
-                <div class="btn-text">
-                  <strong>BUILD & RUN APP</strong>
-                  <small id="buildStatusSubtitle">Biên dịch & hiển thị tức thì trên máy ảo</small>
-                </div>
-              </div>
-            </button>
-
-            <button class="btn btn-warning" id="btnToggleMetro" onclick="reloadApp()">
-              <div class="btn-content">
-                <span class="metro-toggle-icon">⚡</span>
-                <div class="btn-text">
-                  <strong id="btnMetroText">RELOAD APP</strong>
-                  <small>Tải lại mã nguồn</small>
-                </div>
-              </div>
-            </button>
-
-            <button class="btn btn-outline" id="btnCleanBuild" onclick="startBuild()" title="Dọn dẹp và biên dịch lại">
-              🧹 Rebuild Cache
-            </button>
-
-            <button class="btn btn-danger" id="btnCancelBuild" onclick="cancelBuild()" style="display: none;">
-              ⛔ Hủy tiến trình
-            </button>
-          </div>
-
-          <!-- Build Progress Bar -->
-          <div class="build-progress-container" id="buildProgressContainer" style="display: none;">
+          <!-- Build Progress Bar inside Console Top -->
+          <div class="build-progress-container" id="buildProgressContainer" style="display: none; margin: 6px 12px 0 12px;">
             <div class="progress-info">
               <span id="progressStatusText">Đang biên dịch React Native...</span>
               <span id="progressPercent">0%</span>
@@ -218,100 +224,109 @@
               <div class="progress-bar-fill" id="progressBarFill"></div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Developer Console (Tabs: Build, Metro, Logcat, Info) -->
-      <div class="card console-card">
-        <div class="console-tab-header">
-          <div class="console-tabs">
-            <button class="tab-btn active" data-tab="tab-build" onclick="switchTab('tab-build')">
-              <span class="tab-dot dot-yellow"></span>
-              <span>Build Console</span>
-            </button>
-            <button class="tab-btn" data-tab="tab-metro" onclick="switchTab('tab-metro')">
-              <span class="tab-dot dot-green"></span>
-              <span>App Logs & Dev</span>
-            </button>
-            <button class="tab-btn" data-tab="tab-logcat" onclick="switchTab('tab-logcat')">
-              <span class="tab-dot dot-cyan"></span>
-              <span>Android Logcat</span>
-            </button>
-            <button class="tab-btn" data-tab="tab-info" onclick="switchTab('tab-info')">
-              <span class="tab-dot dot-purple"></span>
-              <span>Thông tin môi trường</span>
-            </button>
-          </div>
-
-          <div class="console-actions">
-            <!-- Filter for Logcat -->
-            <div class="logcat-filter-group" id="logcatFilters" style="display: none;">
-              <select id="logLevelSelect" class="select-input-sm">
-                <option value="all">Tất cả Logs</option>
-                <option value="rn" selected>Chỉ React Native (JS)</option>
-                <option value="error">Chỉ Lỗi (Error)</option>
-                <option value="warn">Cảnh báo (Warn)</option>
-              </select>
-              <input type="text" id="logSearchInput" placeholder="Tìm kiếm log..." class="text-input-sm">
+          <div class="console-tab-content">
+            <!-- Tab 1: Build Output -->
+            <div class="tab-pane active" id="tab-build">
+              <pre class="terminal-body" id="buildConsoleOutput"><span class="log-info">Sẵn sàng. Nhấn "BUILD & RUN APP" để biên dịch và chạy ứng dụng React Native lên máy ảo...</span></pre>
             </div>
 
-            <button class="icon-btn-sm" id="btnClearLogs" onclick="clearCurrentLogs()" title="Xóa logs hiện tại">🗑️</button>
-            <button class="icon-btn-sm active" id="btnToggleAutoScroll" onclick="toggleAutoScroll()" title="Tự động cuộn xuống dưới">⬇️</button>
-          </div>
-        </div>
+            <!-- Tab 2: Metro Output -->
+            <div class="tab-pane" id="tab-metro">
+              <pre class="terminal-body" id="metroConsoleOutput"><span class="log-info">Hệ thống ghi nhận logs ứng dụng React Native thời gian thực.</span></pre>
+            </div>
 
-        <div class="console-tab-content">
-          <!-- Tab 1: Build Output -->
-          <div class="tab-pane active" id="tab-build">
-            <pre class="terminal-body" id="buildConsoleOutput"><span class="log-info">Sẵn sàng. Nhấn "BUILD & RUN APP" để biên dịch và chạy ứng dụng React Native lên máy ảo...</span></pre>
-          </div>
-
-          <!-- Tab 2: Metro Output -->
-          <div class="tab-pane" id="tab-metro">
-            <pre class="terminal-body" id="metroConsoleOutput"><span class="log-info">Hệ thống ghi nhận logs ứng dụng React Native thời gian thực.</span></pre>
-          </div>
-
-          <!-- Tab 3: Logcat Output -->
-          <div class="tab-pane" id="tab-logcat">
-            <div class="logcat-stream" id="logcatStreamOutput">
-              <div class="log-line log-info">
-                <span class="log-time">[Hệ thống]</span>
-                <span class="log-tag">Virtual Runner</span>
-                <span class="log-msg">Logs từ ứng dụng React Native sẽ xuất hiện tại đây...</span>
+            <!-- Tab 3: Logcat Output -->
+            <div class="tab-pane" id="tab-logcat">
+              <div class="logcat-stream" id="logcatStreamOutput">
+                <div class="log-line log-info">
+                  <span class="log-time">[Hệ thống]</span>
+                  <span class="log-tag">Virtual Runner</span>
+                  <span class="log-msg">Logs từ ứng dụng React Native sẽ xuất hiện tại đây...</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- Tab 4: Device Info -->
-          <div class="tab-pane" id="tab-info">
-            <div class="device-info-grid" id="deviceInfoGrid">
-              <div class="info-card">
-                <span class="info-label">Loại môi trường:</span>
-                <strong class="info-val" id="infoDeviceModel">Máy Ảo Nội Bộ (Standalone)</strong>
-              </div>
-              <div class="info-card">
-                <span class="info-label">Hệ điều hành mô phỏng:</span>
-                <strong class="info-val" id="infoAndroidVer">Android 14 (API 34)</strong>
-              </div>
-              <div class="info-card">
-                <span class="info-label">Độ phân giải màn hình:</span>
-                <strong class="info-val" id="infoResolution">1080 x 2400 px (360x740 CSS)</strong>
-              </div>
-              <div class="info-card">
-                <span class="info-label">Mật độ điểm ảnh (DPI):</span>
-                <strong class="info-val" id="infoDpi">420 DPI (x3.0)</strong>
-              </div>
-              <div class="info-card">
-                <span class="info-label">Yêu cầu phần cứng:</span>
-                <strong class="info-val" id="infoBattery">Không cần Android Studio</strong>
-              </div>
-              <div class="info-card">
-                <span class="info-label">Trạng thái Bundler:</span>
-                <strong class="info-val" id="infoSerial">esbuild Fast Engine</strong>
+            <!-- Tab 4: Device Info -->
+            <div class="tab-pane" id="tab-info">
+              <div class="device-info-grid" id="deviceInfoGrid">
+                <div class="info-card">
+                  <span class="info-label">Loại môi trường:</span>
+                  <strong class="info-val" id="infoDeviceModel">Máy Ảo Nội Bộ (Standalone)</strong>
+                </div>
+                <div class="info-card">
+                  <span class="info-label">Hệ điều hành mô phỏng:</span>
+                  <strong class="info-val" id="infoAndroidVer">Android 14 (API 34)</strong>
+                </div>
+                <div class="info-card">
+                  <span class="info-label">Độ phân giải màn hình:</span>
+                  <strong class="info-val" id="infoResolution">1080 x 2400 px (360x740 CSS)</strong>
+                </div>
+                <div class="info-card">
+                  <span class="info-label">Mật độ điểm ảnh:</span>
+                  <strong class="info-val" id="infoDpi">420 DPI (x3.0)</strong>
+                </div>
+                <div class="info-card">
+                  <span class="info-label">Thời lượng Pin:</span>
+                  <strong class="info-val" id="infoBattery">100% (Ảo hóa)</strong>
+                </div>
+                <div class="info-card">
+                  <span class="info-label">Công cụ biên dịch:</span>
+                  <strong class="info-val" id="infoSerial">esbuild Fast Engine</strong>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        <!-- Right Column: Vertical Action Sidebar -->
+        <div class="vertical-action-sidebar">
+          <button class="btn btn-success btn-glow vertical-btn-build" id="btnBuildAndRun" onclick="startBuild()">
+            <div class="vertical-btn-content">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <div class="vertical-btn-text">
+                <strong>BUILD & RUN</strong>
+                <small id="buildStatusSubtitle">Biên dịch tức thì</small>
+              </div>
+            </div>
+          </button>
+
+          <button class="btn btn-warning vertical-btn-action" id="btnToggleMetro" onclick="reloadApp()">
+            <div class="vertical-btn-content">
+              <span class="metro-toggle-icon" style="font-size: 1.2rem;">⚡</span>
+              <div class="vertical-btn-text">
+                <strong id="btnMetroText">RELOAD APP</strong>
+                <small>Tải lại mã nguồn</small>
+              </div>
+            </div>
+          </button>
+
+          <button class="btn btn-outline vertical-btn-action" id="btnCleanBuild" onclick="startBuild()" title="Dọn dẹp và biên dịch lại">
+            <div class="vertical-btn-content">
+              <span style="font-size: 1.1rem;">🧹</span>
+              <div class="vertical-btn-text">
+                <strong>Rebuild Cache</strong>
+                <small>Dọn cache & build</small>
+              </div>
+            </div>
+          </button>
+
+          <button class="btn btn-danger vertical-btn-action" id="btnCancelBuild" onclick="cancelBuild()" style="display: none;">
+            ⛔ Hủy tiến trình
+          </button>
+
+          <!-- Live Watcher Badge -->
+          <div class="watcher-status-card">
+            <div class="watcher-status-header">
+              <span class="pulse-dot"></span>
+              <strong>Live Hot Reload</strong>
+            </div>
+            <span class="watcher-status-desc">Tự cập nhật khi bấm Save (Ctrl+S)</span>
+          </div>
+        </div>
+
       </div>
     </section>
   </main>
