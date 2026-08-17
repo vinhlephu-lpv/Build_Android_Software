@@ -456,11 +456,18 @@
         <!-- Build Progress in Modal -->
         <div id="packageProgressBox" style="display: none; margin-bottom: 12px;">
           <div style="display: flex; justify-content: space-between; font-size: 0.76rem; color: var(--cyan-neon); margin-bottom: 4px;">
-            <span id="packageProgressText">Đang thực thi Gradle build...</span>
+            <span id="packageProgressText">Đang thực thi Gradle build... Vui lòng theo dõi cửa sổ Terminal!</span>
             <span class="pulse-dot"></span>
           </div>
-          <div class="progress-bar-track">
+          <div class="progress-bar-track" style="margin-bottom: 8px;">
             <div class="progress-bar-fill" id="packageProgressFill" style="width: 70%; animation: pulseGlow 1.5s infinite;"></div>
+          </div>
+          <div id="packageProgressHint" style="font-size: 0.73rem; color: #a5b4fc; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 8px; padding: 8px 12px; display: flex; align-items: flex-start; gap: 8px; line-height: 1.4;">
+            <span style="font-size: 1rem;">💡</span>
+            <div>
+              <strong style="color: #c7d2fe;">Tiến trình đang chạy trong Terminal ngoài:</strong><br>
+              Bạn có thể nhấn nút <strong>"Đóng"</strong> bên dưới để tắt bảng popup này bất kỳ lúc nào, tiến trình build vẫn tiếp tục chạy tự động trong cửa sổ Terminal ngoài Desktop!
+            </div>
           </div>
         </div>
 
