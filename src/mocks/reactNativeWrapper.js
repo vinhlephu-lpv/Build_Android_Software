@@ -30,6 +30,18 @@ export const TextInput = React.forwardRef(({ style, value, defaultValue, ...prop
   );
 });
 
+export const SafeAreaView = React.forwardRef(({ style, children, ...props }, ref) => {
+  return (
+    <RNWeb.View
+      ref={ref}
+      style={[{ paddingTop: 0, paddingBottom: 0, flex: 1, width: '100%', height: '100%' }, style]}
+      {...props}
+    >
+      {children}
+    </RNWeb.View>
+  );
+});
+
 export const Platform = {
   ...RNWeb.Platform,
   OS: 'android',
@@ -221,6 +233,7 @@ const defaultExport = {
   ...RNWeb,
   ReactNativeVersion,
   TextInput,
+  SafeAreaView,
   Platform,
   Dimensions,
   PixelRatio,

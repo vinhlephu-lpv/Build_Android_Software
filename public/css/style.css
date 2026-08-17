@@ -597,7 +597,7 @@ html, body {
 }
 
 .android-status-bar {
-  height: 19px;
+  height: 18px;
   background: #ffffff;
   display: flex;
   align-items: center;
@@ -608,7 +608,8 @@ html, body {
   color: #0f172a;
   z-index: 10;
   flex-shrink: 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  margin: 0;
+  border: none;
 }
 
 .status-notch {
