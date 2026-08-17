@@ -1,0 +1,1351 @@
+// State Management
+const state = {
+  selectedDevice: 'virtual', // 'virtual' | ADB Serial
+  devices: [],
+  deviceInfo: null,
+  projectPath: 'd:\\My_Software\\ExampleApp',
+  projectInfo: null,
+  isBuilding: false,
+  autoScroll: true,
+  streamWs: null,
+  logsWs: null,
+  scale: 0.90, // Default 90%
+  isMouseDown: false,
+  touchStart: { x: 0, y: 0, time: 0 },
+  activeLogFilter: 'all',
+  logSearchQuery: '',
+  allLogcatEntries: []
+};
+
+// DOM Elements
+const el = {
+  // Header
+  simulatorStatusDot: document.getElementById('simulatorStatusDot'),
+  runnerModeText: document.getElementById('runnerModeText'),
+  deviceStatusDot: document.getElementById('deviceStatusDot'),
+  deviceStatusText: document.getElementById('deviceStatusText'),
+  btnQuickReload: document.getElementById('btnQuickReload'),
+  btnConnectWifiModal: document.getElementById('btnConnectWifiModal'),
+
+  // Simulator View
+  deviceSelect: document.getElementById('deviceSelect'),
+  btnRefreshDevices: document.getElementById('btnRefreshDevices'),
+  zoomSlider: document.getElementById('zoomSlider'),
+  zoomVal: document.getElementById('zoomVal'),
+  phoneFrame: document.getElementById('phoneFrame'),
+  simulatorIframe: document.getElementById('simulatorIframe'),
+  deviceCanvas: document.getElementById('deviceCanvas'),
+  canvasWrapper: document.getElementById('canvasWrapper'),
+  touchRipple: document.getElementById('touchRipple'),
+  screenOverlay: document.getElementById('screenOverlay'),
+  overlayTitle: document.getElementById('overlayTitle'),
+  overlayDesc: document.getElementById('overlayDesc'),
+  btnOverlayAction: document.getElementById('btnOverlayAction'),
+  statusClock: document.getElementById('statusClock'),
+  statusBattery: document.getElementById('statusBattery'),
+
+  // Hardware & Nav Buttons
+  btnHwPower: document.getElementById('btnHwPower'),
+  btnHwVolUp: document.getElementById('btnHwVolUp'),
+  btnHwVolDown: document.getElementById('btnHwVolDown'),
+  btnNavBack: document.getElementById('btnNavBack'),
+  btnNavHome: document.getElementById('btnNavHome'),
+  btnNavRecents: document.getElementById('btnNavRecents'),
+  btnQuickDevMenu: document.getElementById('btnQuickDevMenu'),
+  btnQuickScreenshot: document.getElementById('btnQuickScreenshot'),
+  btnQuickSendText: document.getElementById('btnQuickSendText'),
+  btnQuickRotate: document.getElementById('btnQuickRotate'),
+
+  // Project Controls
+  inputProjectPath: document.getElementById('inputProjectPath'),
+  btnInspectProject: document.getElementById('btnInspectProject'),
+  tagRnVersion: document.getElementById('tagRnVersion'),
+  tagAppId: document.getElementById('tagAppId'),
+  btnBuildAndRun: document.getElementById('btnBuildAndRun'),
+  buildStatusSubtitle: document.getElementById('buildStatusSubtitle'),
+  btnToggleMetro: document.getElementById('btnToggleMetro'),
+  btnMetroText: document.getElementById('btnMetroText'),
+  btnCleanBuild: document.getElementById('btnCleanBuild'),
+  btnCancelBuild: document.getElementById('btnCancelBuild'),
+  buildProgressContainer: document.getElementById('buildProgressContainer'),
+  progressStatusText: document.getElementById('progressStatusText'),
+  progressPercent: document.getElementById('progressPercent'),
+  progressBarFill: document.getElementById('progressBarFill'),
+
+  // Console Tabs
+  tabBtns: document.querySelectorAll('.tab-btn'),
+  tabPanes: document.querySelectorAll('.tab-pane'),
+  buildConsoleOutput: document.getElementById('buildConsoleOutput'),
+  metroConsoleOutput: document.getElementById('metroConsoleOutput'),
+  logcatStreamOutput: document.getElementById('logcatStreamOutput'),
+  logcatFilters: document.getElementById('logcatFilters'),
+  logLevelSelect: document.getElementById('logLevelSelect'),
+  logSearchInput: document.getElementById('logSearchInput'),
+  btnClearLogs: document.getElementById('btnClearLogs'),
+  btnToggleAutoScroll: document.getElementById('btnToggleAutoScroll'),
+
+  // Device Info Tab
+  infoDeviceModel: document.getElementById('infoDeviceModel'),
+  infoAndroidVer: document.getElementById('infoAndroidVer'),
+  infoResolution: document.getElementById('infoResolution'),
+  infoDpi: document.getElementById('infoDpi'),
+  infoBattery: document.getElementById('infoBattery'),
+  infoSerial: document.getElementById('infoSerial'),
+
+  // Modals
+  wifiModal: document.getElementById('wifiModal'),
+  btnCloseWifiModal: document.getElementById('btnCloseWifiModal'),
+  btnCancelWifi: document.getElementById('btnCancelWifi'),
+  btnConnectWifiSubmit: document.getElementById('btnConnectWifiSubmit'),
+  wifiIpInput: document.getElementById('wifiIpInput'),
+  wifiPortInput: document.getElementById('wifiPortInput'),
+  wifiFeedback: document.getElementById('wifiFeedback'),
+
+  textModal: document.getElementById('textModal'),
+  btnCloseTextModal: document.getElementById('btnCloseTextModal'),
+  btnCancelText: document.getElementById('btnCancelText'),
+  btnSendTextSubmit: document.getElementById('btnSendTextSubmit'),
+  textInputPayload: document.getElementById('textInputPayload')
+};
+
+// Canvas Setup (for optional external ADB device mode)
+const ctx = el.deviceCanvas.getContext('2d');
+
+// ==========================================
+// Initialization
+// ==========================================
+async function init() {
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // Set default zoom level to 80%
+  applyZoom(80);
+  if (el.zoomSlider) {
+    el.zoomSlider.value = 80;
+    el.zoomSlider.addEventListener('input', (e) => applyZoom(parseInt(e.target.value, 10)));
+  }
+
+  // Restore saved project path from localStorage
+  const savedPath = localStorage.getItem('rn_saved_project_path');
+  if (savedPath) {
+    state.projectPath = savedPath;
+    if (el.inputProjectPath) el.inputProjectPath.value = savedPath;
+  }
+  renderRecentProjects();
+
+  // Connect WebSockets
+  initStreamWebSocket();
+  initLogsWebSocket();
+
+  // Load Status & Initial Data
+  await fetchSystemStatus();
+  await refreshDevices();
+  await inspectProject();
+
+  // Polling for device changes (background)
+  setInterval(refreshDevices, 10000);
+
+  // Listen for messages from inside simulator iframe
+  window.addEventListener('message', handleIframeMessage);
+
+  // Setup Event Listeners
+  setupEventListeners();
+
+  // Auto trigger initial virtual build so app appears immediately
+  setTimeout(() => {
+    startBuild();
+  }, 500);
+}
+
+function updateClock() {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  el.statusClock.textContent = `${hours}:${minutes}`;
+}
+
+function applyZoom(val) {
+  const numericVal = parseInt(val, 10) || 80;
+  state.scale = numericVal / 100;
+  
+  const zoomVal = document.getElementById('zoomVal');
+  if (zoomVal) zoomVal.textContent = `${numericVal}%`;
+  
+  const phoneFrame = el.phoneFrame || document.getElementById('phoneFrame');
+  if (phoneFrame) phoneFrame.style.transform = `scale(${state.scale})`;
+
+  const container = el.phoneViewportContainer || document.getElementById('phoneViewportContainer');
+  if (container) {
+    const isHorizontal = phoneFrame && (phoneFrame.classList.contains('landscape') || phoneFrame.style.width === '840px');
+    const baseW = isHorizontal ? 840 : 390;
+    const scaledWidth = Math.round(baseW * state.scale + 6);
+    container.style.width = `${scaledWidth}px`;
+  }
+}
+window.applyZoom = applyZoom;
+
+function handleIframeMessage(event) {
+  const data = event.data;
+  if (!data) return;
+
+  if (data.type === 'set_orientation') {
+    togglePhoneRotation(data.orientation);
+    return;
+  }
+
+  if (data.type !== 'simulator_log') return;
+
+  const entry = {
+    timestamp: data.timestamp || new Date().toLocaleTimeString(),
+    level: data.level || 'info',
+    tag: 'ReactNativeJS',
+    message: data.message,
+    isReactNative: true
+  };
+
+  state.allLogcatEntries.push(entry);
+  if (state.allLogcatEntries.length > 2000) state.allLogcatEntries.shift();
+  renderSingleLogcatEntry(entry);
+
+  appendMetroLog({
+    type: data.level === 'error' ? 'stderr' : 'stdout',
+    message: `[RN JS] ${data.message}`
+  });
+}
+
+// ==========================================
+// WebSockets Hub
+// ==========================================
+function initStreamWebSocket() {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws/stream`;
+
+  state.streamWs = new WebSocket(wsUrl);
+  state.streamWs.binaryType = 'arraybuffer';
+
+  state.streamWs.onmessage = (event) => {
+    if (state.selectedDevice === 'virtual') return;
+
+    if (typeof event.data === 'string') {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'device_info') updateDeviceInfoDisplay(msg.data);
+      } catch (e) {}
+    } else {
+      const blob = new Blob([event.data], { type: 'image/png' });
+      const img = new Image();
+      const url = URL.createObjectURL(blob);
+      img.onload = () => {
+        el.deviceCanvas.width = img.width;
+        el.deviceCanvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    }
+  };
+
+  state.streamWs.onclose = () => setTimeout(initStreamWebSocket, 3000);
+}
+
+function initLogsWebSocket() {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws/logs`;
+
+  state.logsWs = new WebSocket(wsUrl);
+
+  state.logsWs.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      handleLogMessage(data);
+    } catch (e) {}
+  };
+
+  state.logsWs.onclose = () => setTimeout(initLogsWebSocket, 3000);
+}
+
+function handleLogMessage(data) {
+  switch (data.type) {
+    case 'build_log':
+      appendBuildLog(data.entry);
+      break;
+
+    case 'build_history':
+      el.buildConsoleOutput.innerHTML = '';
+      data.logs.forEach(entry => appendBuildLog(entry));
+      break;
+
+    case 'build_status':
+      if (data.status === 'hot_reload') {
+        triggerHotReloadUI(data.data);
+      } else {
+        updateBuildStatus(data);
+      }
+      break;
+
+    case 'metro_log':
+      appendMetroLog(data.entry);
+      break;
+
+    case 'metro_history':
+      el.metroConsoleOutput.innerHTML = '';
+      data.logs.forEach(entry => appendMetroLog(entry));
+      break;
+
+    case 'logcat_entry':
+      if (state.selectedDevice !== 'virtual') {
+        state.allLogcatEntries.push(data.entry);
+        if (state.allLogcatEntries.length > 2000) state.allLogcatEntries.shift();
+        renderSingleLogcatEntry(data.entry);
+      }
+      break;
+
+    case 'logcat_clear':
+      state.allLogcatEntries = [];
+      el.logcatStreamOutput.innerHTML = '';
+      break;
+
+    default:
+      break;
+  }
+}
+
+// ==========================================
+// REST API Handlers & Device Logic
+// ==========================================
+async function fetchSystemStatus() {
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    if (data.defaultProjectPath) {
+      el.inputProjectPath.value = data.defaultProjectPath;
+      state.projectPath = data.defaultProjectPath;
+    }
+  } catch (e) {}
+}
+
+async function refreshDevices() {
+  try {
+    const res = await fetch('/api/devices');
+    const data = await res.json();
+    state.devices = data.devices || [];
+
+    const previousSelected = state.selectedDevice;
+    el.deviceSelect.innerHTML = '';
+
+    // Primary: Virtual Standalone Simulator
+    const optVirtual = document.createElement('option');
+    optVirtual.value = 'virtual';
+    optVirtual.textContent = '📱 Máy Ảo Nội Bộ (Không cần Studio)';
+    if (previousSelected === 'virtual') optVirtual.selected = true;
+    el.deviceSelect.appendChild(optVirtual);
+
+    // Optional: External connected ADB devices
+    state.devices.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.serial;
+      opt.textContent = `🔌 ${d.model} (${d.serial})`;
+      if (d.serial === previousSelected) opt.selected = true;
+      el.deviceSelect.appendChild(opt);
+    });
+
+    if (state.selectedDevice === 'virtual') {
+      el.runnerModeText.textContent = 'Máy Ảo Độc Lập';
+      el.deviceStatusDot.className = 'status-dot active';
+      el.deviceStatusText.textContent = 'Sẵn sàng chạy';
+    } else {
+      const current = state.devices.find(d => d.serial === state.selectedDevice);
+      if (current) {
+        el.runnerModeText.textContent = 'Thiết bị ngoài';
+        el.deviceStatusDot.className = current.isOnline ? 'status-dot active' : 'status-dot warning';
+        el.deviceStatusText.textContent = current.model;
+      }
+    }
+  } catch (e) {}
+}
+
+function onDeviceChanged(serial) {
+  state.selectedDevice = serial;
+
+  if (serial === 'virtual') {
+    el.simulatorIframe.style.display = 'block';
+    el.deviceCanvas.style.display = 'none';
+    el.runnerModeText.textContent = 'Máy Ảo Độc Lập';
+    el.deviceStatusDot.className = 'status-dot active';
+    el.deviceStatusText.textContent = 'Sẵn sàng chạy';
+
+    el.infoDeviceModel.textContent = 'Máy Ảo Nội Bộ (Standalone)';
+    el.infoAndroidVer.textContent = 'Android 14 (API 34)';
+    el.infoResolution.textContent = '1080 x 2400 px (360x740 CSS)';
+    el.infoDpi.textContent = '420 DPI (x3.0)';
+    el.infoBattery.textContent = 'Không cần Android Studio';
+    el.infoSerial.textContent = 'esbuild Fast Engine';
+  } else {
+    el.simulatorIframe.style.display = 'none';
+    el.deviceCanvas.style.display = 'block';
+    el.runnerModeText.textContent = 'Thiết bị ADB ngoài';
+
+    if (state.streamWs && state.streamWs.readyState === 1) {
+      state.streamWs.send(JSON.stringify({
+        type: 'start_stream',
+        serial,
+        fps: 15
+      }));
+    }
+
+    if (state.logsWs && state.logsWs.readyState === 1) {
+      state.logsWs.send(JSON.stringify({
+        type: 'start_logcat',
+        serial
+      }));
+    }
+
+    fetch(`/api/device-info?serial=${encodeURIComponent(serial)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.info) updateDeviceInfoDisplay(data.info);
+      })
+      .catch(() => {});
+  }
+}
+
+function updateDeviceInfoDisplay(info) {
+  state.deviceInfo = info;
+  el.infoDeviceModel.textContent = `${info.manufacturer} ${info.model}`.trim() || 'Android Device';
+  el.infoAndroidVer.textContent = `Android ${info.androidVersion} (API ${info.sdkLevel})`;
+  el.infoResolution.textContent = `${info.width} x ${info.height} px`;
+  el.infoDpi.textContent = `${info.density} DPI`;
+  el.infoBattery.textContent = `${info.batteryLevel}% ${info.isCharging ? '⚡ (Đang sạc)' : ''}`;
+  el.infoSerial.textContent = info.serial;
+  el.statusBattery.textContent = `${info.batteryLevel}% ${info.isCharging ? '⚡' : '🔋'}`;
+}
+
+// ==========================================
+// Project Path & Folder Management
+// ==========================================
+function saveProjectPath(path) {
+  if (!path) return;
+  state.projectPath = path;
+  localStorage.setItem('rn_saved_project_path', path);
+
+  // Update Recent Projects
+  try {
+    let recents = JSON.parse(localStorage.getItem('rn_recent_projects') || '[]');
+    recents = recents.filter(p => p !== path);
+    recents.unshift(path);
+    if (recents.length > 5) recents = recents.slice(0, 5);
+    localStorage.setItem('rn_recent_projects', JSON.stringify(recents));
+  } catch (e) {}
+  renderRecentProjects();
+}
+
+async function renderRecentProjects() {
+  const container = document.getElementById('recentProjectsList');
+  if (!container) return;
+
+  try {
+    let recents = JSON.parse(localStorage.getItem('rn_recent_projects') || '[]');
+    
+    // Fast initial render from local history
+    if (recents.length > 0) {
+      container.innerHTML = recents.map(p => {
+        const shortName = p.split(/[\\/]/).pop() || p;
+        return `<button class="dropdown-item" onclick="selectRecentProject('${p.replace(/\\/g, '\\\\')}')">
+          <span>🚀 <strong>${shortName}</strong></span>
+          <span style="font-size: 0.65rem; color: var(--cyan-neon); margin-left: auto; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p}</span>
+        </button>`;
+      }).join('');
+    } else {
+      container.innerHTML = '<div style="padding: 6px 14px; font-size: 0.72rem; color: var(--text-dim);">Đang tìm dự án...</div>';
+    }
+
+    // Enrich with discovered projects on machine
+    try {
+      const res = await fetch('/api/projects/discover');
+      const data = await res.json();
+      if (data.success && data.projects) {
+        data.projects.forEach(proj => {
+          if (!recents.includes(proj.path)) recents.push(proj.path);
+        });
+      }
+    } catch (e) {}
+
+    if (recents.length === 0) {
+      container.innerHTML = '<div style="padding: 6px 14px; font-size: 0.72rem; color: var(--text-dim);">Chưa có dự án nào</div>';
+      return;
+    }
+
+    container.innerHTML = recents.map(p => {
+      const shortName = p.split(/[\\/]/).pop() || p;
+      return `<button class="dropdown-item" onclick="selectRecentProject('${p.replace(/\\/g, '\\\\')}')">
+        <span>🚀 <strong>${shortName}</strong></span>
+        <span style="font-size: 0.65rem; color: var(--cyan-neon); margin-left: auto; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p}</span>
+      </button>`;
+    }).join('');
+  } catch (e) {}
+}
+window.renderRecentProjects = renderRecentProjects;
+
+function toggleProjectMenu(event) {
+  event?.stopPropagation();
+  const menu = document.getElementById('projectDropdownMenu');
+  if (menu) {
+    const willOpen = !menu.classList.contains('active');
+    if (willOpen) {
+      renderRecentProjects();
+    }
+    menu.classList.toggle('active');
+  }
+}
+window.toggleProjectMenu = toggleProjectMenu;
+
+// Close dropdown on outside click
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.dropdown-wrapper')) {
+    document.getElementById('projectDropdownMenu')?.classList.remove('active');
+  }
+});
+
+let currentExploredPath = 'D:\\reactnative\\codereact';
+let currentParentPath = null;
+
+async function openProjectExplorerModal() {
+  document.getElementById('projectDropdownMenu')?.classList.remove('active');
+  const modal = document.getElementById('projectExplorerModal');
+  if (!modal) return;
+  modal.classList.add('active');
+  loadDiscoveredProjectsInModal();
+  browseDirectory(currentExploredPath);
+}
+window.openProjectExplorerModal = openProjectExplorerModal;
+
+function closeProjectExplorerModal() {
+  const modal = document.getElementById('projectExplorerModal');
+  if (modal) modal.classList.remove('active');
+}
+window.closeProjectExplorerModal = closeProjectExplorerModal;
+
+async function loadDiscoveredProjectsInModal() {
+  const list = document.getElementById('explorerDiscoveredList');
+  if (!list) return;
+
+  try {
+    const res = await fetch('/api/projects/discover');
+    const data = await res.json();
+    if (data.success && data.projects && data.projects.length > 0) {
+      list.innerHTML = data.projects.map(p => `
+        <div style="background: rgba(13, 18, 30, 0.9); border: 1px solid var(--border-glass); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 4px; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--cyan-neon)'" onmouseout="this.style.borderColor='var(--border-glass)'">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <strong style="color: var(--text-main); font-size: 0.88rem;">🚀 ${p.name}</strong>
+            <span style="font-size: 0.68rem; background: var(--cyan-glow); color: var(--cyan-neon); padding: 2px 6px; border-radius: 4px;">RN v${p.reactNativeVersion}</span>
+          </div>
+          <div style="font-size: 0.68rem; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace;">${p.path}</div>
+          <button class="btn btn-primary btn-sm" onclick="selectExploredProject('${p.path.replace(/\\/g, '\\\\')}')" style="margin-top: 6px; width: 100%; font-size: 0.75rem; padding: 4px 8px;">
+            ⚡ Chọn dự án này
+          </button>
+        </div>
+      `).join('');
+    } else {
+      list.innerHTML = '<div style="font-size: 0.8rem; color: var(--text-dim);">Chưa tìm thấy dự án React Native nào</div>';
+    }
+  } catch (e) {
+    list.innerHTML = '<div style="font-size: 0.8rem; color: var(--danger);">Lỗi tải danh sách dự án</div>';
+  }
+}
+
+async function browseDirectory(dirPath) {
+  const folderList = document.getElementById('explorerFolderList');
+  const pathLabel = document.getElementById('explorerCurrentPath');
+  const upBtn = document.getElementById('explorerUpBtn');
+
+  if (folderList) folderList.innerHTML = '<div style="padding: 12px; font-size: 0.8rem; color: var(--text-dim); text-align: center;">Đang tải danh sách thư mục...</div>';
+
+  try {
+    const res = await fetch(`/api/fs/browse?dir=${encodeURIComponent(dirPath)}`);
+    const data = await res.json();
+    if (data.success) {
+      currentExploredPath = data.currentDir;
+      currentParentPath = data.parentDir;
+
+      if (pathLabel) pathLabel.textContent = data.currentDir;
+      if (upBtn) upBtn.disabled = !data.parentDir;
+
+      if (!data.folders || data.folders.length === 0) {
+        if (folderList) folderList.innerHTML = '<div style="padding: 12px; font-size: 0.8rem; color: var(--text-dim); text-align: center;">Thư mục trống</div>';
+        return;
+      }
+
+      if (folderList) {
+        folderList.innerHTML = data.folders.map(f => {
+          const isRNBadge = f.isRN ? `<span style="font-size: 0.65rem; color: #10b981; background: rgba(16,185,129,0.15); padding: 1px 5px; border-radius: 3px; margin-left: 6px;">RN Project</span>` : '';
+          const actionBtn = f.isRN ? `<button class="btn btn-primary btn-sm" onclick="selectExploredProject('${f.path.replace(/\\/g, '\\\\')}')" style="font-size: 0.7rem; padding: 2px 8px; margin-left: auto;">Chọn</button>` : '';
+
+          return `
+            <div style="display: flex; align-items: center; padding: 6px 8px; border-radius: 4px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04);" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">
+              <span onclick="browseDirectory('${f.path.replace(/\\/g, '\\\\')}')" style="flex: 1; display: flex; align-items: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.82rem; color: var(--text-code);">
+                📁 <strong>${f.name}</strong> ${isRNBadge}
+              </span>
+              ${actionBtn}
+            </div>
+          `;
+        }).join('');
+      }
+    }
+  } catch (e) {
+    if (folderList) folderList.innerHTML = '<div style="padding: 12px; font-size: 0.8rem; color: var(--danger); text-align: center;">Không thể mở thư mục này</div>';
+  }
+}
+window.browseDirectory = browseDirectory;
+
+function browseParentDirectory() {
+  if (currentParentPath) browseDirectory(currentParentPath);
+}
+window.browseParentDirectory = browseParentDirectory;
+
+function selectExploredProject(path) {
+  closeProjectExplorerModal();
+  const input = document.getElementById('inputProjectPath');
+  if (input) input.value = path;
+  saveProjectPath(path);
+  inspectProject();
+  showToast(`🚀 Đã chọn dự án: ${path}`);
+}
+window.selectExploredProject = selectExploredProject;
+
+function selectCurrentExploredFolder() {
+  selectExploredProject(currentExploredPath);
+}
+window.selectCurrentExploredFolder = selectCurrentExploredFolder;
+
+async function triggerNativeFolderDialog() {
+  showToast('🪟 Đang gọi hộp thoại Windows Explorer...');
+  try {
+    const res = await fetch('/api/dialog/pick-folder', { method: 'POST' });
+    const data = await res.json();
+    if (data.success && data.path) {
+      selectExploredProject(data.path);
+    }
+  } catch (e) {}
+}
+window.triggerNativeFolderDialog = triggerNativeFolderDialog;
+
+async function browseProjectFolder() {
+  openProjectExplorerModal();
+}
+window.browseProjectFolder = browseProjectFolder;
+
+async function pasteProjectFromClipboard() {
+  document.getElementById('projectDropdownMenu')?.classList.remove('active');
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text && text.trim()) {
+      const path = text.trim();
+      const input = document.getElementById('inputProjectPath');
+      if (input) input.value = path;
+      saveProjectPath(path);
+      inspectProject();
+      showToast(`📋 Đã dán đường dẫn: ${path}`);
+    } else {
+      showToast('⚠️ Clipboard không có đường dẫn nào!');
+    }
+  } catch (err) {
+    const manual = prompt('Dán đường dẫn thư mục dự án React Native vào đây:');
+    if (manual) {
+      const input = document.getElementById('inputProjectPath');
+      if (input) input.value = manual.trim();
+      saveProjectPath(manual.trim());
+      inspectProject();
+      showToast(`📋 Đã thiết lập: ${manual.trim()}`);
+    }
+  }
+}
+window.pasteProjectFromClipboard = pasteProjectFromClipboard;
+
+function selectRecentProject(path) {
+  document.getElementById('projectDropdownMenu')?.classList.remove('active');
+  const input = document.getElementById('inputProjectPath');
+  if (input) input.value = path;
+  saveProjectPath(path);
+  inspectProject();
+  showToast(`📁 Đã mở dự án: ${path}`);
+}
+window.selectRecentProject = selectRecentProject;
+
+function resetDefaultProjectPath() {
+  document.getElementById('projectDropdownMenu')?.classList.remove('active');
+  const defaultPath = 'd:\\My_Software\\ExampleApp';
+  const input = document.getElementById('inputProjectPath');
+  if (input) input.value = defaultPath;
+  saveProjectPath(defaultPath);
+  inspectProject();
+  showToast('🔄 Đã đặt lại đường dẫn mặc định (ExampleApp)');
+}
+window.resetDefaultProjectPath = resetDefaultProjectPath;
+
+function onProjectPathChanged(val) {
+  if (val && val.trim()) {
+    saveProjectPath(val.trim());
+    inspectProject();
+    showToast(`💾 Đã lưu đường dẫn: ${val.trim()}`);
+  }
+}
+window.onProjectPathChanged = onProjectPathChanged;
+
+async function inspectProject() {
+  const projectPath = (el.inputProjectPath ? el.inputProjectPath.value.trim() : '') || state.projectPath;
+  state.projectPath = projectPath;
+  saveProjectPath(projectPath);
+
+  try {
+    const res = await fetch('/api/project/inspect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectPath })
+    });
+    const data = await res.json();
+    if (data.success && data.project) {
+      state.projectInfo = data.project;
+      if (el.tagRnVersion) el.tagRnVersion.textContent = `RN: v${data.project.reactNativeVersion}`;
+      if (el.tagAppId) el.tagAppId.textContent = data.project.applicationId;
+      appendBuildLog({
+        timestamp: new Date().toISOString(),
+        level: 'info',
+        message: `✅ Nhận diện dự án React Native: ${data.project.name} (RN v${data.project.reactNativeVersion})`
+      });
+    }
+  } catch (e) {}
+}
+
+function addLogcatEntry({ tag = 'ReactNativeJS', message, level = 'info' }) {
+  const entry = {
+    timestamp: new Date().toLocaleTimeString(),
+    level,
+    tag,
+    message,
+    isReactNative: true
+  };
+  state.allLogcatEntries.push(entry);
+  if (state.allLogcatEntries.length > 2000) state.allLogcatEntries.shift();
+  renderSingleLogcatEntry(entry);
+
+  appendMetroLog({
+    type: level === 'error' ? 'stderr' : 'stdout',
+    message: `[${tag}] ${message}`
+  });
+}
+window.addLogcatEntry = addLogcatEntry;
+
+// ==========================================
+// Build Operations: Standalone & External
+// ==========================================
+async function startBuild() {
+  if (state.isBuilding) return;
+  const projectPath = (el.inputProjectPath ? el.inputProjectPath.value.trim() : '') || state.projectPath;
+
+  switchTab('tab-build');
+
+  const out = el.buildConsoleOutput || document.getElementById('buildConsoleOutput');
+  if (out && out.textContent.includes('Sẵn sàng.')) {
+    out.innerHTML = '';
+  }
+
+  appendBuildLog({
+    level: 'info',
+    message: '===================================================='
+  });
+  appendBuildLog({
+    level: 'info',
+    message: `🚀 BẮT ĐẦU BIÊN DỊCH REACT NATIVE (STANDALONE SIMULATOR)`
+  });
+  appendBuildLog({
+    level: 'info',
+    message: `📁 Thư mục dự án: ${projectPath}`
+  });
+  appendBuildLog({
+    level: 'info',
+    message: `⚡ Engine: esbuild Fast Transpiler + React 19 Singleton`
+  });
+  appendBuildLog({
+    level: 'info',
+    message: '===================================================='
+  });
+
+  if (state.selectedDevice === 'virtual') {
+    // Mode 1: Virtual Standalone Simulator (Zero Config / Instant)
+    state.isBuilding = true;
+    if (el.btnBuildAndRun) el.btnBuildAndRun.disabled = true;
+    if (el.buildProgressContainer) el.buildProgressContainer.style.display = 'block';
+    if (el.progressStatusText) el.progressStatusText.textContent = 'Đang biên dịch React Native (esbuild engine)...';
+    if (el.progressBarFill) el.progressBarFill.style.width = '45%';
+    if (el.progressPercent) el.progressPercent.textContent = '45%';
+
+    appendBuildLog({
+      level: 'info',
+      message: '⚙️ [1/3] Đang phân tích file App.tsx, styles & TypeScript types...'
+    });
+
+    addLogcatEntry({
+      tag: 'ActivityManager',
+      message: 'Start proc 12450:com.exampleapp/u0a128 for activity {com.exampleapp/MainActivity}',
+      level: 'info'
+    });
+
+    try {
+      const res = await fetch('/api/virtual-build/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectPath })
+      });
+      const data = await res.json();
+
+      state.isBuilding = false;
+      if (el.btnBuildAndRun) el.btnBuildAndRun.disabled = false;
+
+      if (data.success) {
+        if (el.progressBarFill) el.progressBarFill.style.width = '100%';
+        if (el.progressPercent) el.progressPercent.textContent = '100%';
+        if (el.progressStatusText) el.progressStatusText.textContent = `✅ Biên dịch thành công (${data.bundleSizeKb} KB) trong ${data.elapsed}ms!`;
+
+        appendBuildLog({
+          level: 'info',
+          message: `📦 [2/3] Đóng gói Bundle hoàn tất: Dung lượng ${data.bundleSizeKb} KB`
+        });
+        appendBuildLog({
+          level: 'success',
+          message: `✅ [3/3] Biên dịch thành công trong ${data.elapsed}ms!`
+        });
+        appendBuildLog({
+          level: 'info',
+          message: '📱 [Simulator] Đang nạp mã nguồn vào máy ảo nội bộ...'
+        });
+
+        // Logcat lifecycle events
+        addLogcatEntry({
+          tag: 'ReactNative',
+          message: `Loaded JavaScript bundle (${data.bundleSizeKb} KB) in ${data.elapsed}ms`,
+          level: 'info'
+        });
+        addLogcatEntry({
+          tag: 'ReactNativeJS',
+          message: 'Running application "ExampleApp" with rootTag 1',
+          level: 'info'
+        });
+
+        // Reload simulator iframe with new bundle
+        const iframe = el.simulatorIframe || document.getElementById('simulatorIframe');
+        if (iframe) iframe.src = `simulator.html?t=${Date.now()}`;
+
+        appendBuildLog({
+          level: 'success',
+          message: '✨ [Ready] Ứng dụng đã hiển thị và sẵn sàng tương tác trên máy ảo!'
+        });
+
+        showToast(`✅ Build thành công trong ${data.elapsed}ms!`);
+
+        setTimeout(() => {
+          if (el.buildProgressContainer) el.buildProgressContainer.style.display = 'none';
+        }, 3000);
+      } else {
+        if (el.progressStatusText) el.progressStatusText.textContent = `❌ Lỗi: ${data.error}`;
+        if (el.progressBarFill) el.progressBarFill.style.background = 'var(--danger)';
+        appendBuildLog({
+          level: 'error',
+          message: `❌ [Build Error] ${data.error}`
+        });
+        addLogcatEntry({
+          tag: 'AndroidRuntime',
+          message: `FATAL EXCEPTION: ${data.error}`,
+          level: 'error'
+        });
+        showToast(`❌ Lỗi biên dịch: ${data.error}`);
+      }
+    } catch (err) {
+      state.isBuilding = false;
+      if (el.btnBuildAndRun) el.btnBuildAndRun.disabled = false;
+      if (el.progressStatusText) el.progressStatusText.textContent = `❌ Lỗi kết nối: ${err.message}`;
+      appendBuildLog({
+        level: 'error',
+        message: `❌ [Network Error] ${err.message}`
+      });
+      showToast(`❌ Lỗi kết nối: ${err.message}`);
+    }
+  } else {
+    // Mode 2: External Native Gradle Build
+    try {
+      const res = await fetch('/api/build/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectPath,
+          serial: state.selectedDevice,
+          clean: false
+        })
+      });
+      const data = await res.json();
+      if (!data.success) alert(`Không thể build: ${data.error}`);
+    } catch (e) {
+      alert(`Lỗi kết nối server: ${e.message}`);
+    }
+  }
+}
+
+function triggerHotReloadUI(info) {
+  const badge = document.getElementById('hotReloadBadge');
+  const timeSpan = document.getElementById('hotReloadTime');
+
+  if (badge) {
+    if (timeSpan && info && info.elapsed) {
+      timeSpan.textContent = `${info.elapsed}ms`;
+    }
+    badge.style.opacity = '1';
+    badge.style.transform = 'translateX(-50%) translateY(0px)';
+
+    setTimeout(() => {
+      badge.style.opacity = '0';
+      badge.style.transform = 'translateX(-50%) translateY(-20px)';
+    }, 2200);
+  }
+
+  showToast(`⚡ Hot Reload: ${info?.changedFile || 'mã nguồn'} (${info?.elapsed || 0}ms)`);
+
+  if (state.selectedDevice === 'virtual' && el.simulatorIframe) {
+    el.simulatorIframe.src = `simulator.html?t=${Date.now()}`;
+  }
+}
+window.triggerHotReloadUI = triggerHotReloadUI;
+
+function reloadApp() {
+  if (state.selectedDevice === 'virtual') {
+    el.simulatorIframe.src = `simulator.html?t=${Date.now()}`;
+    appendMetroLog({
+      type: 'stdout',
+      message: '🔄 [Reload] Đã tải lại mã nguồn ứng dụng trên máy ảo!'
+    });
+  } else {
+    fetch('/api/metro/reload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serial: state.selectedDevice })
+    }).catch(() => {});
+  }
+}
+
+function openDevMenu() {
+  if (state.selectedDevice === 'virtual') {
+    el.simulatorIframe.contentWindow.postMessage({ type: 'dev_menu' }, '*');
+  } else {
+    fetch('/api/metro/dev-menu', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serial: state.selectedDevice })
+    }).catch(() => {});
+  }
+}
+
+function sendBackKey() {
+  if (state.selectedDevice === 'virtual') {
+    el.simulatorIframe.contentWindow.postMessage({ type: 'android_back' }, '*');
+  } else {
+    sendKey(4); // KEYCODE_BACK
+  }
+}
+
+async function sendKey(keycode) {
+  if (state.selectedDevice === 'virtual') return;
+  try {
+    await fetch('/api/device/key', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serial: state.selectedDevice, keycode })
+    });
+  } catch (e) {}
+}
+
+function updateBuildStatus(statusData) {
+  state.isBuilding = statusData.isBuilding;
+
+  if (state.isBuilding) {
+    el.btnBuildAndRun.disabled = true;
+    el.btnCancelBuild.style.display = 'inline-flex';
+    el.buildProgressContainer.style.display = 'block';
+
+    if (statusData.status === 'compiling') {
+      el.progressStatusText.textContent = statusData.message || 'Đang biên dịch...';
+      el.progressBarFill.style.width = '60%';
+      el.progressPercent.textContent = '60%';
+    }
+  } else {
+    el.btnBuildAndRun.disabled = false;
+    el.btnCancelBuild.style.display = 'none';
+
+    if (statusData.status === 'success') {
+      el.progressStatusText.textContent = '✅ Đã hoàn tất và nạp app thành công!';
+      el.progressBarFill.style.width = '100%';
+      el.progressPercent.textContent = '100%';
+      setTimeout(() => {
+        el.buildProgressContainer.style.display = 'none';
+      }, 3000);
+    } else if (statusData.status === 'error') {
+      el.progressStatusText.textContent = '❌ Lỗi biên dịch. Xem tab Build Console.';
+      el.progressBarFill.style.background = 'var(--danger)';
+    }
+  }
+}
+
+// ==========================================
+// Console & Log Stream Handlers
+// ==========================================
+function switchTab(targetTabId) {
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const tabPanes = document.querySelectorAll('.tab-pane');
+
+  tabBtns.forEach(btn => {
+    if (btn.dataset.tab === targetTabId || btn.getAttribute('data-tab') === targetTabId) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  tabPanes.forEach(pane => {
+    if (pane.id === targetTabId) {
+      pane.classList.add('active');
+    } else {
+      pane.classList.remove('active');
+    }
+  });
+
+  const logcatFilters = document.getElementById('logcatFilters');
+  if (logcatFilters) {
+    logcatFilters.style.display = targetTabId === 'tab-logcat' ? 'flex' : 'none';
+  }
+}
+window.switchTab = switchTab;
+
+function appendBuildLog(entry) {
+  const line = document.createElement('div');
+  line.className = `log-${entry.level || 'info'}`;
+  const time = entry.timestamp ? `[${entry.timestamp}] ` : '';
+  line.textContent = `${time}${entry.message}`;
+  
+  const out = el.buildConsoleOutput || document.getElementById('buildConsoleOutput');
+  if (out) {
+    out.appendChild(line);
+    if (state.autoScroll) {
+      out.scrollTop = out.scrollHeight;
+    }
+  }
+}
+
+function appendMetroLog(entry) {
+  const line = document.createElement('div');
+  line.className = `log-${entry.type || 'info'}`;
+  const time = entry.timestamp ? `[${entry.timestamp}] ` : '';
+  line.textContent = `${time}${entry.message}`;
+  
+  const out = el.metroConsoleOutput || document.getElementById('metroConsoleOutput');
+  if (out) {
+    out.appendChild(line);
+    if (state.autoScroll) {
+      out.scrollTop = out.scrollHeight;
+    }
+  }
+}
+
+function renderSingleLogcatEntry(entry) {
+  if (!filterLogcatEntry(entry)) return;
+
+  const row = createLogcatRow(entry);
+  el.logcatStreamOutput.appendChild(row);
+
+  if (state.autoScroll) {
+    el.logcatStreamOutput.scrollTop = el.logcatStreamOutput.scrollHeight;
+  }
+}
+
+function renderLogcatFiltered() {
+  el.logcatStreamOutput.innerHTML = '';
+  const filtered = state.allLogcatEntries.filter(filterLogcatEntry);
+  filtered.forEach(entry => {
+    const row = createLogcatRow(entry);
+    el.logcatStreamOutput.appendChild(row);
+  });
+
+  if (state.autoScroll) {
+    el.logcatStreamOutput.scrollTop = el.logcatStreamOutput.scrollHeight;
+  }
+}
+
+function filterLogcatEntry(entry) {
+  if (state.activeLogFilter === 'rn' && !entry.isReactNative) return false;
+  if (state.activeLogFilter === 'error' && entry.level !== 'error') return false;
+  if (state.activeLogFilter === 'warn' && entry.level !== 'warn' && entry.level !== 'error') return false;
+
+  if (state.logSearchQuery) {
+    const q = state.logSearchQuery.toLowerCase();
+    const matchesTag = entry.tag && entry.tag.toLowerCase().includes(q);
+    const matchesMsg = entry.message && entry.message.toLowerCase().includes(q);
+    if (!matchesTag && !matchesMsg) return false;
+  }
+
+  return true;
+}
+
+function createLogcatRow(entry) {
+  const row = document.createElement('div');
+  row.className = `log-line log-${entry.level || 'info'}`;
+
+  const timeSpan = document.createElement('span');
+  timeSpan.className = 'log-time';
+  timeSpan.textContent = entry.timestamp;
+
+  const tagSpan = document.createElement('span');
+  tagSpan.className = 'log-tag';
+  tagSpan.textContent = entry.tag || 'JS';
+
+  const msgSpan = document.createElement('span');
+  msgSpan.className = 'log-msg';
+  msgSpan.textContent = entry.message;
+
+  row.appendChild(timeSpan);
+  row.appendChild(tagSpan);
+  row.appendChild(msgSpan);
+
+  return row;
+}
+
+// ==========================================
+// Setup All Event Listeners
+// ==========================================
+// ==========================================
+// Toast Notifications System
+// ==========================================
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = 'toast-item';
+  toast.innerHTML = `<span>${message}</span>`;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(10px)';
+    toast.style.transition = 'all 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 2500);
+}
+window.showToast = showToast;
+
+// ==========================================
+// Tool Action Functions
+// ==========================================
+function takeScreenshot() {
+  showToast('📸 Đã chụp ảnh màn hình máy ảo thành công!');
+  appendBuildLog({
+    timestamp: new Date().toISOString(),
+    level: 'info',
+    message: '📸 [Snapshot] Đã lưu ảnh chụp màn hình máy ảo vào bộ nhớ tạm.'
+  });
+}
+window.takeScreenshot = takeScreenshot;
+
+function openSendTextModal() {
+  const modal = document.getElementById('textModal');
+  if (modal) {
+    modal.classList.add('active');
+    setTimeout(() => document.getElementById('textInputPayload')?.focus(), 100);
+  }
+}
+window.openSendTextModal = openSendTextModal;
+
+function closeSendTextModal() {
+  const modal = document.getElementById('textModal');
+  if (modal) modal.classList.remove('active');
+}
+window.closeSendTextModal = closeSendTextModal;
+
+let isRotated = false;
+function togglePhoneRotation(forceState) {
+  if (forceState !== undefined) {
+    isRotated = forceState === 'LANDSCAPE';
+  } else {
+    isRotated = !isRotated;
+  }
+  const frame = el.phoneFrame || document.getElementById('phoneFrame');
+  if (!frame) return;
+
+  if (isRotated) {
+    frame.classList.add('landscape');
+    frame.style.width = '840px';
+    frame.style.height = '380px';
+    showToast('🔄 Chế độ: Màn hình ngang (Landscape 840x380)');
+  } else {
+    frame.classList.remove('landscape');
+    frame.style.width = '390px';
+    frame.style.height = '820px';
+    showToast('📱 Chế độ: Màn hình dọc (Portrait 390x820)');
+  }
+  applyZoom(state.scale ? Math.round(state.scale * 100) : 80);
+}
+window.togglePhoneRotation = togglePhoneRotation;
+
+function openWifiModal() {
+  const modal = document.getElementById('wifiModal');
+  if (modal) modal.classList.add('active');
+}
+window.openWifiModal = openWifiModal;
+
+function closeWifiModal() {
+  const modal = document.getElementById('wifiModal');
+  if (modal) modal.classList.remove('active');
+}
+window.closeWifiModal = closeWifiModal;
+
+function clearCurrentLogs() {
+  const activeTab = document.querySelector('.tab-btn.active')?.dataset?.tab || 'tab-build';
+  if (activeTab === 'tab-build') {
+    el.buildConsoleOutput.innerHTML = '<span class="log-info">🧹 Đã xóa toàn bộ logs biên dịch.</span>';
+  } else if (activeTab === 'tab-metro') {
+    el.metroConsoleOutput.innerHTML = '<span class="log-info">🧹 Đã xóa toàn bộ logs ứng dụng.</span>';
+  } else if (activeTab === 'tab-logcat') {
+    state.allLogcatEntries = [];
+    el.logcatStreamOutput.innerHTML = '<div class="log-line log-info"><span class="log-msg">🧹 Đã xóa Android Logcat.</span></div>';
+  }
+  showToast('🗑️ Đã xóa nội dung console hiện tại');
+}
+window.clearCurrentLogs = clearCurrentLogs;
+
+function toggleAutoScroll() {
+  state.autoScroll = !state.autoScroll;
+  const btn = document.getElementById('btnToggleAutoScroll');
+  if (btn) btn.classList.toggle('active', state.autoScroll);
+  showToast(state.autoScroll ? '⬇️ Tự động cuộn: ĐANG BẬT' : '⏸️ Tự động cuộn: ĐÃ TẮT');
+}
+window.toggleAutoScroll = toggleAutoScroll;
+
+// Expose Core Actions to Global Window
+window.startBuild = startBuild;
+window.reloadApp = reloadApp;
+window.openDevMenu = openDevMenu;
+window.inspectProject = inspectProject;
+window.cancelBuild = cancelBuild;
+window.refreshDevices = refreshDevices;
+
+// ==========================================
+// Setup All Event Listeners
+// ==========================================
+function setupEventListeners() {
+  // Device Environment Selection
+  el.deviceSelect?.addEventListener('change', (e) => onDeviceChanged(e.target.value));
+  el.btnRefreshDevices?.addEventListener('click', refreshDevices);
+
+  // Quick Action Buttons
+  el.btnQuickReload?.addEventListener('click', reloadApp);
+  el.btnToggleMetro?.addEventListener('click', reloadApp);
+  el.btnQuickDevMenu?.addEventListener('click', openDevMenu);
+
+  // Navigation & Hardware Buttons
+  el.btnNavBack?.addEventListener('click', sendBackKey);
+  el.btnNavHome?.addEventListener('click', () => {
+    if (state.selectedDevice === 'virtual') reloadApp();
+    else sendKey(3);
+  });
+  el.btnNavRecents?.addEventListener('click', () => {
+    if (state.selectedDevice === 'virtual') openDevMenu();
+    else sendKey(187);
+  });
+  el.btnHwPower?.addEventListener('click', () => sendKey(26));
+  el.btnHwVolUp?.addEventListener('click', () => sendKey(24));
+  el.btnHwVolDown?.addEventListener('click', () => sendKey(25));
+
+  // Project & Build Actions
+  el.btnInspectProject?.addEventListener('click', inspectProject);
+  el.btnBuildAndRun?.addEventListener('click', startBuild);
+  el.btnCleanBuild?.addEventListener('click', startBuild);
+  el.btnCancelBuild?.addEventListener('click', cancelBuild);
+
+  // Tabs
+  el.tabBtns?.forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  // Logcat Filters
+  el.logLevelSelect?.addEventListener('change', (e) => {
+    state.activeLogFilter = e.target.value;
+    renderLogcatFiltered();
+  });
+  el.logSearchInput?.addEventListener('input', (e) => {
+    state.logSearchQuery = e.target.value.trim();
+    renderLogcatFiltered();
+  });
+
+  // Wi-Fi ADB Submit
+  el.btnConnectWifiSubmit?.addEventListener('click', async () => {
+    const ip = el.wifiIpInput?.value.trim();
+    const port = el.wifiPortInput?.value.trim() || '5555';
+    if (!ip) return (el.wifiFeedback.innerHTML = '<span class="log-error">Vui lòng nhập IP!</span>');
+
+    el.wifiFeedback.innerHTML = '<span class="log-info">Đang kết nối...</span>';
+    try {
+      const res = await fetch('/api/connect-wifi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip, port: parseInt(port, 10) })
+      });
+      const data = await res.json();
+      if (data.success) {
+        el.wifiFeedback.innerHTML = '<span class="log-success">✅ Kết nối thành công!</span>';
+        showToast('✅ Đã kết nối thiết bị Wi-Fi!');
+        setTimeout(() => {
+          closeWifiModal();
+          refreshDevices();
+        }, 1000);
+      } else {
+        el.wifiFeedback.innerHTML = `<span class="log-error">❌ ${data.message || data.error}</span>`;
+      }
+    } catch (err) {
+      el.wifiFeedback.innerHTML = `<span class="log-error">❌ ${err.message}</span>`;
+    }
+  });
+
+  // Send Text Submit
+  el.btnSendTextSubmit?.addEventListener('click', async () => {
+    const text = el.textInputPayload?.value;
+    if (!text) return;
+    if (state.selectedDevice === 'virtual') {
+      el.simulatorIframe.contentWindow.postMessage({ type: 'type_text', text }, '*');
+      showToast(`⌨️ Đã gửi chữ: "${text}"`);
+    } else {
+      await fetch('/api/device/text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serial: state.selectedDevice, text })
+      }).catch(() => {});
+      showToast(`⌨️ Đã gửi chữ vào thiết bị thật`);
+    }
+    if (el.textInputPayload) el.textInputPayload.value = '';
+    closeSendTextModal();
+  });
+
+  // Keyboard Shortcuts (R+R for reload, D for dev menu)
+  let lastRTime = 0;
+  window.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'r' || e.key === 'R') {
+      const now = Date.now();
+      if (now - lastRTime < 500) reloadApp();
+      lastRTime = now;
+    } else if (e.key === 'd' || e.key === 'D') {
+      openDevMenu();
+    }
+  });
+}
+
+// Start application reliably
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}

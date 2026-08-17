@@ -1,0 +1,37 @@
+{
+  "name": "build-android-software",
+  "version": "1.0.0",
+  "description": "Desktop tool to build, run and interact with React Native CLI apps on an Android device simulator",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "react-native",
+    "android",
+    "simulator",
+    "builder",
+    "adb",
+    "scrcpy",
+    "metro"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "dependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/plugin-transform-flow-strip-types": "^7.29.7",
+    "@babel/preset-env": "^7.29.7",
+    "@babel/preset-react": "^7.29.7",
+    "@babel/preset-typescript": "^7.29.7",
+    "cors": "^2.8.5",
+    "esbuild": "^0.28.2",
+    "express": "^4.21.2",
+    "flow-remove-types": "^2.328.0",
+    "open": "^10.1.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-native-web": "^0.21.2",
+    "ws": "^8.18.0"
+  }
+}
