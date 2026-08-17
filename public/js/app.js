@@ -99,13 +99,7 @@ const el = {
   btnConnectWifiSubmit: document.getElementById('btnConnectWifiSubmit'),
   wifiIpInput: document.getElementById('wifiIpInput'),
   wifiPortInput: document.getElementById('wifiPortInput'),
-  wifiFeedback: document.getElementById('wifiFeedback'),
-
-  textModal: document.getElementById('textModal'),
-  btnCloseTextModal: document.getElementById('btnCloseTextModal'),
-  btnCancelText: document.getElementById('btnCancelText'),
-  btnSendTextSubmit: document.getElementById('btnSendTextSubmit'),
-  textInputPayload: document.getElementById('textInputPayload')
+  wifiFeedback: document.getElementById('wifiFeedback')
 };
 
 // Canvas Setup (for optional external ADB device mode)

@@ -60,12 +60,6 @@
       <button class="btn btn-outline btn-sm" id="btnQuickDevMenu" onclick="openDevMenu()" title="Mở Dev Menu của React Native">
         <span>⚙️ Dev Menu</span>
       </button>
-      <button class="btn btn-outline btn-sm" id="btnQuickScreenshot" onclick="takeScreenshot()" title="Chụp ảnh màn hình">
-        <span>📸 Chụp ảnh</span>
-      </button>
-      <button class="btn btn-outline btn-sm" id="btnQuickSendText" onclick="openSendTextModal()" title="Gõ văn bản vào ứng dụng">
-        <span>⌨️ Nhập chữ</span>
-      </button>
       <button class="btn btn-outline btn-sm" id="btnQuickRotate" onclick="togglePhoneRotation()" title="Xoay màn hình">
         <span>🔄 Xoay</span>
       </button>
@@ -344,26 +338,6 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeWifiModal()">Hủy</button>
         <button class="btn btn-primary" id="btnConnectWifiSubmit">Kết nối</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Send Text Modal -->
-  <div class="modal-overlay" id="textModal">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3>Nhập văn bản vào ứng dụng</h3>
-        <button class="modal-close" onclick="closeSendTextModal()">✕</button>
-      </div>
-      <div class="modal-body">
-        <p class="modal-desc">Văn bản sẽ được gửi trực tiếp vào ô TextInput đang được focus trên màn hình:</p>
-        <div class="form-group">
-          <input type="text" id="textInputPayload" class="text-input" placeholder="Nhập chữ cần điền...">
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeSendTextModal()">Hủy</button>
-        <button class="btn btn-primary" id="btnSendTextSubmit">Gửi văn bản</button>
       </div>
     </div>
   </div>
