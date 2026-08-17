@@ -214,6 +214,16 @@ function handleIframeMessage(event) {
   const data = event.data;
   if (!data) return;
 
+  if (data.type === 'start_build_request') {
+    startBuild();
+    return;
+  }
+
+  if (data.type === 'select_folder_request') {
+    document.getElementById('folderPickerInput')?.click();
+    return;
+  }
+
   if (data.type === 'set_orientation') {
     togglePhoneRotation(data.orientation);
     return;
