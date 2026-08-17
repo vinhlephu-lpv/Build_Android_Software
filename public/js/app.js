@@ -133,6 +133,10 @@ async function init() {
   }
   renderRecentProjects();
 
+  // Restore saved color profile
+  const savedColor = localStorage.getItem('rn_color_profile') || 'vivid';
+  setColorProfile(savedColor);
+
   // Connect WebSockets
   initStreamWebSocket();
   initLogsWebSocket();
@@ -183,6 +187,29 @@ function applyZoom(val) {
   }
 }
 window.applyZoom = applyZoom;
+
+function setColorProfile(profile) {
+  const wrapper = document.getElementById('canvasWrapper');
+  const select = document.getElementById('colorProfileSelect');
+  if (!wrapper) return;
+
+  wrapper.classList.remove('color-vivid', 'color-super-vivid', 'color-natural');
+
+  if (profile === 'super-vivid') {
+    wrapper.classList.add('color-super-vivid');
+    showToast('🌈 Chế độ màn hình: Siêu Rực Rỡ (DCI-P3)');
+  } else if (profile === 'natural') {
+    wrapper.classList.add('color-natural');
+    showToast('🖥️ Chế độ màn hình: Tự Nhiên (sRGB)');
+  } else {
+    wrapper.classList.add('color-vivid');
+    showToast('✨ Chế độ màn hình: AMOLED Tươi Sáng');
+  }
+
+  if (select) select.value = profile;
+  localStorage.setItem('rn_color_profile', profile);
+}
+window.setColorProfile = setColorProfile;
 
 function handleIframeMessage(event) {
   const data = event.data;
