@@ -44,7 +44,7 @@ async function createWindow() {
     height: 920,
     minWidth: 1100,
     minHeight: 720,
-    title: 'Build Android Software - React Native Desktop Simulator',
+    title: 'Build Android Software - Aurasoft Systems',
     backgroundColor: '#0a0d14',
     show: false,
     autoHideMenuBar: true,
