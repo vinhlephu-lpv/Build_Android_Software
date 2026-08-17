@@ -647,20 +647,19 @@ html, body {
   justify-content: center;
   overflow: hidden;
   min-height: 0;
-  /* Default Mobile AMOLED Color Enhancer (Vivid & Rich) */
-  filter: saturate(1.15) contrast(1.04) brightness(1.01);
+  filter: none;
   transition: filter 0.2s ease;
 }
 
 /* Color Profile Classes */
+.screen-canvas-wrapper.color-natural {
+  filter: none;
+}
 .screen-canvas-wrapper.color-vivid {
   filter: saturate(1.15) contrast(1.04) brightness(1.01);
 }
 .screen-canvas-wrapper.color-super-vivid {
   filter: saturate(1.26) contrast(1.07) brightness(1.02);
-}
-.screen-canvas-wrapper.color-natural {
-  filter: none;
 }
 
 .simulator-frame {

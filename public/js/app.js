@@ -128,7 +128,7 @@ async function init() {
   renderRecentProjects();
 
   // Restore saved color profile
-  const savedColor = localStorage.getItem('rn_color_profile') || 'vivid';
+  const savedColor = localStorage.getItem('rn_color_profile') || 'natural';
   setColorProfile(savedColor);
 
   // Connect WebSockets
