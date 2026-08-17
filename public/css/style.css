@@ -524,12 +524,12 @@ html, body {
   width: var(--phone-width);
   height: var(--phone-height);
   flex-shrink: 0;
-  background: #ffffff;
+  background: #151922;
   border-radius: var(--phone-bezel-radius);
-  border: 7px solid #e2e8f0;
-  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.6),
-              0 0 0 2px rgba(255, 255, 255, 0.9),
-              0 0 30px rgba(255, 255, 255, 0.15);
+  border: 8px solid #202738;
+  box-shadow: 0 25px 65px rgba(0, 0, 0, 0.8),
+              0 0 0 1.5px rgba(255, 255, 255, 0.1),
+              0 0 40px rgba(0, 240, 255, 0.08);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -544,6 +544,7 @@ html, body {
   width: 840px !important;
   height: 380px !important;
   border-radius: 28px;
+  border: 8px solid #202738;
 }
 .phone-frame.landscape .android-status-bar {
   height: 18px;
@@ -554,30 +555,31 @@ html, body {
   display: none;
 }
 .phone-frame.landscape .phone-screen {
-  border-radius: 22px;
+  border-radius: 20px;
 }
 
 .hw-btn {
   position: absolute;
-  background: #e2e8f0;
-  border: 1px solid #cbd5e1;
+  background: #252e42;
+  border: 1px solid #3b4866;
   border-radius: 2px;
   cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 .hw-power {
-  right: -9px;
+  right: -10px;
   top: 140px;
   width: 3px;
   height: 50px;
 }
 .hw-vol-up {
-  left: -9px;
+  left: -10px;
   top: 120px;
   width: 3px;
   height: 45px;
 }
 .hw-vol-down {
-  left: -9px;
+  left: -10px;
   top: 175px;
   width: 3px;
   height: 45px;
@@ -591,6 +593,7 @@ html, body {
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
 }
 
 .android-status-bar {
