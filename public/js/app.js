@@ -1148,8 +1148,47 @@ function switchTab(targetTabId) {
   if (logcatFilters) {
     logcatFilters.style.display = targetTabId === 'tab-logcat' ? 'flex' : 'none';
   }
+
+  // Auto scroll to bottom when switching tab if autoScroll is enabled
+  if (state.autoScroll) {
+    requestAnimationFrame(() => {
+      scrollActiveTabToBottom();
+    });
+  }
 }
 window.switchTab = switchTab;
+
+function scrollToBottom(element) {
+  if (!state.autoScroll || !element) return;
+  
+  // 1. Scroll the element itself
+  element.scrollTop = element.scrollHeight;
+
+  // 2. Scroll parent .tab-pane (the actual scrollable container)
+  const pane = element.closest('.tab-pane') || element.parentElement;
+  if (pane) {
+    pane.scrollTop = pane.scrollHeight;
+  }
+
+  // 3. Ensure active tab-pane is at the bottom
+  const activePane = document.querySelector('.tab-pane.active');
+  if (activePane) {
+    activePane.scrollTop = activePane.scrollHeight;
+  }
+}
+window.scrollToBottom = scrollToBottom;
+
+function scrollActiveTabToBottom() {
+  const activePane = document.querySelector('.tab-pane.active');
+  if (activePane) {
+    activePane.scrollTop = activePane.scrollHeight;
+    const body = activePane.querySelector('.terminal-body, .logcat-stream');
+    if (body) {
+      body.scrollTop = body.scrollHeight;
+    }
+  }
+}
+window.scrollActiveTabToBottom = scrollActiveTabToBottom;
 
 function appendBuildLog(entry) {
   const line = document.createElement('div');
@@ -1160,9 +1199,7 @@ function appendBuildLog(entry) {
   const out = el.buildConsoleOutput || document.getElementById('buildConsoleOutput');
   if (out) {
     out.appendChild(line);
-    if (state.autoScroll) {
-      out.scrollTop = out.scrollHeight;
-    }
+    scrollToBottom(out);
   }
 }
 
@@ -1175,9 +1212,7 @@ function appendMetroLog(entry) {
   const out = el.metroConsoleOutput || document.getElementById('metroConsoleOutput');
   if (out) {
     out.appendChild(line);
-    if (state.autoScroll) {
-      out.scrollTop = out.scrollHeight;
-    }
+    scrollToBottom(out);
   }
 }
 
@@ -1185,24 +1220,24 @@ function renderSingleLogcatEntry(entry) {
   if (!filterLogcatEntry(entry)) return;
 
   const row = createLogcatRow(entry);
-  el.logcatStreamOutput.appendChild(row);
-
-  if (state.autoScroll) {
-    el.logcatStreamOutput.scrollTop = el.logcatStreamOutput.scrollHeight;
+  const out = el.logcatStreamOutput || document.getElementById('logcatStreamOutput');
+  if (out) {
+    out.appendChild(row);
+    scrollToBottom(out);
   }
 }
 
 function renderLogcatFiltered() {
-  el.logcatStreamOutput.innerHTML = '';
+  const out = el.logcatStreamOutput || document.getElementById('logcatStreamOutput');
+  if (!out) return;
+  out.innerHTML = '';
   const filtered = state.allLogcatEntries.filter(filterLogcatEntry);
   filtered.forEach(entry => {
     const row = createLogcatRow(entry);
-    el.logcatStreamOutput.appendChild(row);
+    out.appendChild(row);
   });
 
-  if (state.autoScroll) {
-    el.logcatStreamOutput.scrollTop = el.logcatStreamOutput.scrollHeight;
-  }
+  scrollToBottom(out);
 }
 
 function filterLogcatEntry(entry) {
@@ -1517,8 +1552,16 @@ window.clearCurrentLogs = clearCurrentLogs;
 function toggleAutoScroll() {
   state.autoScroll = !state.autoScroll;
   const btn = document.getElementById('btnToggleAutoScroll');
-  if (btn) btn.classList.toggle('active', state.autoScroll);
-  showToast(state.autoScroll ? '⬇️ Tự động cuộn: ĐANG BẬT' : '⏸️ Tự động cuộn: ĐÃ TẮT');
+  if (btn) {
+    btn.classList.toggle('active', state.autoScroll);
+  }
+  
+  if (state.autoScroll) {
+    scrollActiveTabToBottom();
+    showToast('Tự động cuộn: ĐANG BẬT', 'success');
+  } else {
+    showToast('Tự động cuộn: ĐÃ TẮT', 'info');
+  }
 }
 window.toggleAutoScroll = toggleAutoScroll;
 
