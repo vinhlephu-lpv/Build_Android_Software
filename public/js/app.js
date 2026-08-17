@@ -1343,19 +1343,19 @@ window.closePackageModal = closePackageModal;
 
 function selectPackageType(type) {
   selectedPackageType = type;
-  const cards = ['debug_apk', 'release_apk', 'release_aab'];
-  cards.forEach(t => {
-    const card = document.getElementById(`opt_${t}`);
-    const radio = document.getElementById(`radio_${t}`);
+  const cards = [
+    { key: 'debug_apk', cls: 'active-debug' },
+    { key: 'release_apk', cls: 'active-release' },
+    { key: 'release_aab', cls: 'active-aab' }
+  ];
+
+  cards.forEach(item => {
+    const card = document.getElementById(`opt_${item.key}`);
     if (card) {
-      if (t === type) {
-        card.style.borderColor = 'var(--cyan-neon)';
-        card.style.background = 'rgba(0, 240, 255, 0.08)';
-        if (radio) radio.checked = true;
+      if (item.key === type) {
+        card.classList.add(item.cls);
       } else {
-        card.style.borderColor = 'var(--border-glass)';
-        card.style.background = 'rgba(13, 19, 32, 0.6)';
-        if (radio) radio.checked = false;
+        card.classList.remove('active-debug', 'active-release', 'active-aab');
       }
     }
   });
