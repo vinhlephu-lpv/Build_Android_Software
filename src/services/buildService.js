@@ -279,6 +279,160 @@ class BuildService {
     };
   }
 
+  async buildPackage(projectPath, type = 'debug_apk', options = {}) {
+    if (this.isBuilding) {
+      return { success: false, error: 'Tiến trình biên dịch khác đang chạy, vui lòng chờ!' };
+    }
+
+    this.isBuilding = true;
+    this.buildHistory = [];
+
+    const isAAB = type === 'release_aab';
+    const isRelease = type === 'release_apk' || isAAB;
+    const taskName = isAAB ? 'Release AAB (Google Play)' : (isRelease ? 'Release APK' : 'Debug APK');
+
+    this.broadcastStatus('compiling', { message: `Đang biên dịch gói ${taskName}...` });
+    this.broadcastLog('====================================================', 'info');
+    this.broadcastLog(`📦 BẮT ĐẦU XUẤT GÓI CÀI ĐẶT: ${taskName.toUpperCase()}`, 'info');
+    this.broadcastLog(`📁 Thư mục dự án: ${projectPath}`, 'info');
+    this.broadcastLog('====================================================', 'info');
+
+    const projectInfo = this.inspectProject(projectPath);
+    if (!projectInfo.valid) {
+      this.isBuilding = false;
+      this.broadcastLog(`❌ Lỗi cấu trúc dự án: ${projectInfo.error}`, 'error');
+      this.broadcastStatus('error', { error: projectInfo.error });
+      return { success: false, error: projectInfo.error };
+    }
+
+    const androidDir = path.join(projectPath, 'android');
+    if (!projectInfo.hasAndroid || !projectInfo.hasGradlew) {
+      this.isBuilding = false;
+      const errMsg = 'Dự án chưa có thư mục android/ hoặc gradlew.bat (Cần cấu trúc React Native Native tiêu chuẩn để chạy Gradle)';
+      this.broadcastLog(`❌ ${errMsg}`, 'error');
+      this.broadcastStatus('error', { error: errMsg });
+      return { success: false, error: errMsg };
+    }
+
+    // Determine gradle command and argument
+    const isWindows = process.platform === 'win32';
+    const gradlewCmd = isWindows ? 'gradlew.bat' : './gradlew';
+    let gradleTask = 'assembleDebug';
+    if (type === 'release_apk') gradleTask = 'assembleRelease';
+    else if (type === 'release_aab') gradleTask = 'bundleRelease';
+
+    const gradleArgs = [gradleTask];
+    if (options.clean) {
+      gradleArgs.unshift('clean');
+      this.broadcastLog('🧹 Đang dọn dẹp cache Gradle trước khi build (Clean Build)...', 'info');
+    }
+
+    this.broadcastLog(`🔨 Đang thực thi lệnh Gradle: ${gradlewCmd} ${gradleArgs.join(' ')}...`, 'info');
+
+    const buildSuccess = await new Promise((resolve) => {
+      const proc = spawn(gradlewCmd, gradleArgs, {
+        cwd: androidDir,
+        shell: isWindows,
+        env: {
+          ...process.env,
+          ANDROID_HOME: process.env.ANDROID_HOME || 'C:\\Android',
+          ANDROID_SDK_ROOT: process.env.ANDROID_SDK_ROOT || 'C:\\Android',
+          JAVA_HOME: process.env.JAVA_HOME || 'C:\\Program Files\\Java\\jdk-17',
+          FORCE_COLOR: 'true'
+        }
+      });
+
+      this.currentProcess = proc;
+
+      proc.stdout.on('data', (data) => {
+        this.broadcastLog(data.toString(), 'stdout');
+      });
+
+      proc.stderr.on('data', (data) => {
+        this.broadcastLog(data.toString(), 'stderr');
+      });
+
+      proc.on('close', (code) => {
+        this.currentProcess = null;
+        if (code === 0) resolve(true);
+        else {
+          this.broadcastLog(`❌ Gradle thất bại với mã lỗi exit code: ${code}`, 'error');
+          resolve(false);
+        }
+      });
+
+      proc.on('error', (err) => {
+        this.currentProcess = null;
+        this.broadcastLog(`❌ Lỗi khởi chạy Gradle: ${err.message}`, 'error');
+        resolve(false);
+      });
+    });
+
+    if (!buildSuccess) {
+      this.isBuilding = false;
+      this.broadcastStatus('error', { error: 'Biên dịch Gradle thất bại' });
+      return { success: false, error: 'Biên dịch Gradle thất bại. Xem chi tiết lỗi trong Build Console.' };
+    }
+
+    // Locate Output File
+    let targetDir = '';
+    let ext = '.apk';
+
+    if (type === 'debug_apk') {
+      targetDir = path.join(androidDir, 'app', 'build', 'outputs', 'apk', 'debug');
+      ext = '.apk';
+    } else if (type === 'release_apk') {
+      targetDir = path.join(androidDir, 'app', 'build', 'outputs', 'apk', 'release');
+      ext = '.apk';
+    } else if (type === 'release_aab') {
+      targetDir = path.join(androidDir, 'app', 'build', 'outputs', 'bundle', 'release');
+      ext = '.aab';
+    }
+
+    let foundFile = null;
+    if (fs.existsSync(targetDir)) {
+      const files = fs.readdirSync(targetDir);
+      const matched = files.filter(f => f.endsWith(ext));
+      if (matched.length > 0) {
+        const sorted = matched.map(f => ({
+          name: f,
+          path: path.join(targetDir, f),
+          time: fs.statSync(path.join(targetDir, f)).mtimeMs
+        })).sort((a, b) => b.time - a.time);
+        foundFile = sorted[0].path;
+      }
+    }
+
+    this.isBuilding = false;
+
+    if (!foundFile || !fs.existsSync(foundFile)) {
+      this.broadcastLog(`❌ Không tìm thấy file xuất ra trong thư mục: ${targetDir}`, 'error');
+      this.broadcastStatus('error', { error: 'Không tìm thấy file sản phẩm sau khi build' });
+      return { success: false, error: 'Không tìm thấy file sản phẩm sau khi build' };
+    }
+
+    const stat = fs.statSync(foundFile);
+    const sizeMb = (stat.size / (1024 * 1024)).toFixed(2);
+    const fileName = path.basename(foundFile);
+
+    this.broadcastLog('====================================================', 'info');
+    this.broadcastLog(`🎉 XUẤT GÓI ${taskName.toUpperCase()} THÀNH CÔNG!`, 'success');
+    this.broadcastLog(`📁 Tên file: ${fileName}`, 'success');
+    this.broadcastLog(`📊 Dung lượng: ${sizeMb} MB`, 'success');
+    this.broadcastLog(`📍 Đường dẫn: ${foundFile}`, 'info');
+    this.broadcastLog('====================================================', 'info');
+    this.broadcastStatus('success', { message: `Đã xuất file ${fileName} (${sizeMb} MB) thành công!` });
+
+    return {
+      success: true,
+      filePath: foundFile,
+      fileName,
+      sizeMb,
+      type,
+      directory: path.dirname(foundFile)
+    };
+  }
+
   cancelBuild() {
     if (this.currentProcess) {
       const pid = this.currentProcess.pid;

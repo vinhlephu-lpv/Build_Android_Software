@@ -1312,6 +1312,128 @@ function closeWifiModal() {
 }
 window.closeWifiModal = closeWifiModal;
 
+// Package Export (APK / AAB)
+let selectedPackageType = 'debug_apk';
+let lastExportedFilePath = null;
+
+function openPackageModal() {
+  const modal = document.getElementById('packageModal');
+  const appNameEl = document.getElementById('packageModalAppName');
+  if (appNameEl) {
+    appNameEl.textContent = state.projectInfo?.name || 'ExampleApp';
+  }
+  const resultBox = document.getElementById('packageResultBox');
+  if (resultBox) resultBox.style.display = 'none';
+  const progressBox = document.getElementById('packageProgressBox');
+  if (progressBox) progressBox.style.display = 'none';
+  const startBtn = document.getElementById('btnStartExportPackage');
+  if (startBtn) startBtn.disabled = false;
+
+  selectPackageType('debug_apk');
+
+  if (modal) modal.classList.add('active');
+}
+window.openPackageModal = openPackageModal;
+
+function closePackageModal() {
+  const modal = document.getElementById('packageModal');
+  if (modal) modal.classList.remove('active');
+}
+window.closePackageModal = closePackageModal;
+
+function selectPackageType(type) {
+  selectedPackageType = type;
+  const cards = ['debug_apk', 'release_apk', 'release_aab'];
+  cards.forEach(t => {
+    const card = document.getElementById(`opt_${t}`);
+    const radio = document.getElementById(`radio_${t}`);
+    if (card) {
+      if (t === type) {
+        card.style.borderColor = 'var(--cyan-neon)';
+        card.style.background = 'rgba(0, 240, 255, 0.08)';
+        if (radio) radio.checked = true;
+      } else {
+        card.style.borderColor = 'var(--border-glass)';
+        card.style.background = 'rgba(13, 19, 32, 0.6)';
+        if (radio) radio.checked = false;
+      }
+    }
+  });
+}
+window.selectPackageType = selectPackageType;
+
+async function startExportPackage() {
+  const startBtn = document.getElementById('btnStartExportPackage');
+  const progressBox = document.getElementById('packageProgressBox');
+  const progressText = document.getElementById('packageProgressText');
+  const resultBox = document.getElementById('packageResultBox');
+  const chkClean = document.getElementById('chkCleanBuildPackage');
+
+  const projectPath = state.projectPath;
+  const type = selectedPackageType;
+  const clean = chkClean ? chkClean.checked : false;
+
+  if (startBtn) startBtn.disabled = true;
+  if (progressBox) progressBox.style.display = 'block';
+  if (resultBox) resultBox.style.display = 'none';
+  if (progressText) progressText.textContent = `Đang thực thi Gradle build (${type})... Vui lòng theo dõi tab Build Console!`;
+
+  switchTab('tab-build');
+  showToast(`🚀 Đang đóng gói ${type.toUpperCase()}...`);
+
+  try {
+    const res = await fetch('/api/build/package', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectPath, type, clean })
+    });
+    const data = await res.json();
+
+    if (startBtn) startBtn.disabled = false;
+    if (progressBox) progressBox.style.display = 'none';
+
+    if (data.success) {
+      lastExportedFilePath = data.filePath;
+      if (resultBox) {
+        resultBox.style.display = 'block';
+        document.getElementById('packageResultSize').textContent = `${data.sizeMb} MB (${data.fileName})`;
+        document.getElementById('packageResultPath').textContent = data.filePath;
+      }
+      showToast(`🎉 Xuất file ${data.fileName} (${data.sizeMb} MB) thành công!`);
+    } else {
+      showToast(`❌ Lỗi đóng gói: ${data.error}`);
+      alert(`Không thể xuất gói:\n${data.error}`);
+    }
+  } catch (err) {
+    if (startBtn) startBtn.disabled = false;
+    if (progressBox) progressBox.style.display = 'none';
+    showToast(`❌ Lỗi kết nối: ${err.message}`);
+    alert(`Lỗi kết nối server: ${err.message}`);
+  }
+}
+window.startExportPackage = startExportPackage;
+
+async function revealPackageFile() {
+  if (!lastExportedFilePath) return;
+  try {
+    await fetch('/api/fs/reveal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePath: lastExportedFilePath })
+    });
+    showToast('📂 Đã mở thư mục chứa file');
+  } catch (e) {
+    showToast(`Lỗi: ${e.message}`);
+  }
+}
+window.revealPackageFile = revealPackageFile;
+
+function downloadPackageFile() {
+  if (!lastExportedFilePath) return;
+  window.open(`/api/build/download?filePath=${encodeURIComponent(lastExportedFilePath)}`, '_blank');
+}
+window.downloadPackageFile = downloadPackageFile;
+
 function clearCurrentLogs() {
   const activeTab = document.querySelector('.tab-btn.active')?.dataset?.tab || 'tab-build';
   if (activeTab === 'tab-build') {

@@ -323,6 +323,17 @@
             </div>
           </button>
 
+          <!-- Export APK / AAB Quick Button -->
+          <button class="btn btn-info vertical-btn-action" id="btnExportPackage" onclick="openPackageModal()" title="Xuất file cài đặt APK & AAB (Google Play)" style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(99, 102, 241, 0.3)); border: 1px solid rgba(168, 85, 247, 0.5); color: #e9d5ff;">
+            <div class="vertical-btn-content">
+              <span style="font-size: 1.15rem;">📦</span>
+              <div class="vertical-btn-text">
+                <strong>XUẤT</strong>
+                <small>APK/AAB</small>
+              </div>
+            </div>
+          </button>
+
           <button class="btn btn-danger vertical-btn-action" id="btnCancelBuild" onclick="cancelBuild()" style="display: none;" title="Hủy tiến trình biên dịch">
             <div class="vertical-btn-content">
               <span style="font-size: 1rem;">⛔</span>
@@ -342,6 +353,118 @@
       </div>
     </section>
   </main>
+
+  <!-- Build & Export Package Modal (APK & AAB) -->
+  <div class="modal-overlay" id="packageModal">
+    <div class="modal-card" style="max-width: 620px; width: 95%;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.2rem;">📦</span>
+          <h3 style="margin: 0;">Xuất Gói Cài Đặt Android (APK & AAB)</h3>
+        </div>
+        <button class="modal-close" onclick="closePackageModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="modal-desc" style="margin-bottom: 14px;">
+          Chọn định dạng gói bạn muốn đóng gói từ dự án <strong id="packageModalAppName" style="color: var(--cyan-neon);">ExampleApp</strong>:
+        </p>
+
+        <!-- Package Variant Options -->
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px;">
+          
+          <!-- Option 1: Debug APK -->
+          <div class="package-option-card" onclick="selectPackageType('debug_apk')" id="opt_debug_apk" style="padding: 12px; border-radius: 10px; border: 2px solid var(--cyan-neon); background: rgba(0, 240, 255, 0.08); cursor: pointer; display: flex; align-items: center; gap: 12px; transition: all 0.2s;">
+            <input type="radio" name="pkgType" id="radio_debug_apk" value="debug_apk" checked style="accent-color: var(--cyan-neon); transform: scale(1.2);">
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <strong style="color: #f1f5f9; font-size: 0.92rem;">📦 Debug APK</strong>
+                <span class="tag tag-rn" style="font-size: 0.65rem;">Cài đặt thử nghiệm nhanh</span>
+              </div>
+              <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; margin-bottom: 0;">
+                File APK để cài trực tiếp qua USB, gửi Zalo/Drive test trên điện thoại thật.
+              </p>
+            </div>
+          </div>
+
+          <!-- Option 2: Release APK -->
+          <div class="package-option-card" onclick="selectPackageType('release_apk')" id="opt_release_apk" style="padding: 12px; border-radius: 10px; border: 1px solid var(--border-glass); background: rgba(13, 19, 32, 0.6); cursor: pointer; display: flex; align-items: center; gap: 12px; transition: all 0.2s;">
+            <input type="radio" name="pkgType" id="radio_release_apk" value="release_apk" style="accent-color: var(--emerald-neon); transform: scale(1.2);">
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <strong style="color: #f1f5f9; font-size: 0.92rem;">🚀 Release APK</strong>
+                <span class="tag tag-app" style="font-size: 0.65rem;">Tối ưu hóa độc lập</span>
+              </div>
+              <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; margin-bottom: 0;">
+                File APK hoàn thiện, nén nhỏ, tối ưu hiệu năng tối đa cho người dùng cuối.
+              </p>
+            </div>
+          </div>
+
+          <!-- Option 3: Release AAB (Google Play) -->
+          <div class="package-option-card" onclick="selectPackageType('release_aab')" id="opt_release_aab" style="padding: 12px; border-radius: 10px; border: 1px solid var(--border-glass); background: rgba(13, 19, 32, 0.6); cursor: pointer; display: flex; align-items: center; gap: 12px; transition: all 0.2s;">
+            <input type="radio" name="pkgType" id="radio_release_aab" value="release_aab" style="accent-color: var(--purple-neon); transform: scale(1.2);">
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <strong style="color: #f1f5f9; font-size: 0.92rem;">🌐 Release AAB (Android App Bundle)</strong>
+                <span class="tag" style="background: rgba(168, 85, 247, 0.18); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); font-size: 0.65rem;">Google Play Store</span>
+              </div>
+              <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; margin-bottom: 0;">
+                Gói định dạng chuẩn .aab để đăng phát hành lên Google Play Developer Console.
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Clean build toggle -->
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding: 8px 12px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid var(--border-glass);">
+          <input type="checkbox" id="chkCleanBuildPackage" style="accent-color: var(--cyan-neon);">
+          <label for="chkCleanBuildPackage" style="font-size: 0.78rem; color: var(--text-main); cursor: pointer;">
+            🧹 Dọn dẹp cache Gradle trước khi build (Clean Build - Tránh lỗi cache cũ)
+          </label>
+        </div>
+
+        <!-- Result Box (Hidden until build completes) -->
+        <div id="packageResultBox" style="display: none; padding: 12px; border-radius: 10px; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--emerald-neon); margin-bottom: 14px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+            <strong style="color: var(--emerald-neon); font-size: 0.88rem;">🎉 Đã xuất gói thành công!</strong>
+            <span id="packageResultSize" style="font-size: 0.78rem; color: #a7f3d0; font-weight: bold;">-- MB</span>
+          </div>
+          <div id="packageResultPath" style="font-family: monospace; font-size: 0.72rem; color: #e2e8f0; word-break: break-all; margin-bottom: 10px; padding: 6px; background: rgba(0,0,0,0.4); border-radius: 6px;">
+            --
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-primary btn-sm" id="btnRevealFile" onclick="revealPackageFile()" style="flex: 1;">
+              📂 Mở thư mục chứa file
+            </button>
+            <button class="btn btn-success btn-sm" id="btnDownloadPackage" onclick="downloadPackageFile()" style="flex: 1;">
+              ⬇️ Tải file về máy
+            </button>
+          </div>
+        </div>
+
+        <!-- Build Progress in Modal -->
+        <div id="packageProgressBox" style="display: none; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.76rem; color: var(--cyan-neon); margin-bottom: 4px;">
+            <span id="packageProgressText">Đang thực thi Gradle build...</span>
+            <span class="pulse-dot"></span>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="packageProgressFill" style="width: 70%; animation: pulseGlow 1.5s infinite;"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closePackageModal()">Đóng</button>
+        <button class="btn btn-primary" id="btnStartExportPackage" onclick="startExportPackage()">
+          🚀 Bắt đầu Build & Xuất Gói
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Wi-Fi ADB Connection Modal -->
   <div class="modal-overlay" id="wifiModal">

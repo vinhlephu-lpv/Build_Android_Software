@@ -129,6 +129,42 @@ app.post('/api/connect-wifi', async (req, res) => {
   res.json(result);
 });
 
+// Package Export (APK / AAB)
+app.post('/api/build/package', async (req, res) => {
+  const projectPath = req.body.projectPath || defaultProjectPath;
+  const type = req.body.type || 'debug_apk';
+  const clean = !!req.body.clean;
+
+  try {
+    const result = await buildService.buildPackage(projectPath, type, { clean });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/fs/reveal', (req, res) => {
+  const filePath = req.body.filePath;
+  if (!filePath || !fs.existsSync(filePath)) {
+    return res.status(404).json({ success: false, error: 'File does not exist' });
+  }
+  const { exec } = require('child_process');
+  if (process.platform === 'win32') {
+    exec(`explorer.exe /select,"${filePath.replace(/\//g, '\\')}"`, () => {});
+  } else {
+    exec(`open "${path.dirname(filePath)}"`, () => {});
+  }
+  res.json({ success: true });
+});
+
+app.get('/api/build/download', (req, res) => {
+  const filePath = req.query.filePath;
+  if (!filePath || !fs.existsSync(filePath)) {
+    return res.status(404).send('File not found');
+  }
+  res.download(filePath);
+});
+
 // Project Management & Native Folder Dialog
 let activeDialogProcess = null;
 
