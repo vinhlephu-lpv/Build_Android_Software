@@ -112,10 +112,10 @@ async function init() {
   updateClock();
   setInterval(updateClock, 1000);
 
-  // Set default zoom level to 80%
-  applyZoom(80);
+  // Set default zoom level to 89%
+  applyZoom(89);
   if (el.zoomSlider) {
-    el.zoomSlider.value = 80;
+    el.zoomSlider.value = 89;
     el.zoomSlider.addEventListener('input', (e) => applyZoom(parseInt(e.target.value, 10)));
   }
 
