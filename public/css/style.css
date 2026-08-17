@@ -428,18 +428,117 @@ html, body {
   margin: 5px 0;
 }
 
+/* ==========================================================================
+   CRISP SVG VECTOR ICON DESIGN SYSTEM (Lucide-Standard)
+   ========================================================================== */
+.v-icon, svg.icon, .tab-icon, i[data-lucide] {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  stroke-width: 2.2px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.2s ease, filter 0.2s ease;
+}
+
+.v-icon-sm { width: 14px; height: 14px; min-width: 14px; min-height: 14px; }
+.v-icon-md { width: 16px; height: 16px; min-width: 16px; min-height: 16px; }
+.v-icon-lg { width: 20px; height: 20px; min-width: 20px; min-height: 20px; }
+.v-icon-xl { width: 24px; height: 24px; min-width: 24px; min-height: 24px; }
+
+/* Neon Accent Icon Classes (High Contrast Glow) */
+.text-cyan { color: var(--cyan-neon) !important; stroke: var(--cyan-neon) !important; filter: drop-shadow(0 0 5px rgba(0, 240, 255, 0.45)); }
+.text-emerald { color: var(--emerald-neon) !important; stroke: var(--emerald-neon) !important; filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.45)); }
+.text-purple { color: var(--purple-neon) !important; stroke: var(--purple-neon) !important; filter: drop-shadow(0 0 5px rgba(168, 85, 247, 0.45)); }
+.text-amber { color: var(--amber-neon) !important; stroke: var(--amber-neon) !important; filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.45)); }
+.text-rose { color: var(--rose-neon) !important; stroke: var(--rose-neon) !important; filter: drop-shadow(0 0 5px rgba(244, 63, 94, 0.45)); }
+.text-indigo { color: var(--indigo-neon) !important; stroke: var(--indigo-neon) !important; filter: drop-shadow(0 0 5px rgba(99, 102, 241, 0.45)); }
+
+.bg-cyan-subtle { background: rgba(0, 240, 255, 0.15) !important; }
+.bg-emerald-subtle { background: rgba(16, 185, 129, 0.15) !important; }
+.bg-purple-subtle { background: rgba(168, 85, 247, 0.15) !important; }
+.bg-amber-subtle { background: rgba(245, 158, 11, 0.15) !important; }
+
+/* Interactive Hover States */
+.btn:hover .v-icon, .icon-btn-sm:hover .v-icon, .dropdown-item:hover .v-icon {
+  transform: scale(1.15);
+}
+
+.title-icon {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  border-radius: 7px;
+  background: rgba(0, 240, 255, 0.12);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cyan-neon);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+  margin-right: 6px;
+}
+
 .icon-btn-sm {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--text-muted);
-  padding: 2px 6px;
-  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  font-size: 0.72rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .icon-btn-sm:hover {
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
+  background: rgba(0, 240, 255, 0.15);
+  border-color: var(--cyan-neon);
+  color: var(--cyan-neon);
+  transform: translateY(-1px);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.35);
+}
+.icon-btn-sm.active {
+  background: rgba(0, 240, 255, 0.2);
+  border-color: var(--cyan-neon);
+  color: var(--cyan-neon);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.25);
+}
+
+.pkg-icon-box {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+}
+.pkg-card:hover .pkg-icon-box {
+  transform: scale(1.12);
+}
+
+.pkg-header-badge {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(99, 102, 241, 0.2));
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: #c084fc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
 }
 
 .select-input, .text-input {

@@ -1613,14 +1613,14 @@ function setupEventListeners() {
     if (!text) return;
     if (state.selectedDevice === 'virtual') {
       el.simulatorIframe.contentWindow.postMessage({ type: 'type_text', text }, '*');
-      showToast(`⌨️ Đã gửi chữ: "${text}"`);
+      showToast(`Đã gửi chữ: "${text}"`, 'info');
     } else {
       await fetch('/api/device/text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ serial: state.selectedDevice, text })
       }).catch(() => {});
-      showToast(`⌨️ Đã gửi chữ vào thiết bị thật`);
+      showToast('Đã gửi chữ vào thiết bị thật', 'info');
     }
     if (el.textInputPayload) el.textInputPayload.value = '';
     closeSendTextModal();

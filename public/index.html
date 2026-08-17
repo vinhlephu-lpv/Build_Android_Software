@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="dark-theme">
   <!-- Ultra-Compact Top Header Bar -->
@@ -62,20 +63,20 @@
     <!-- Header Actions (Integrated Quick Tools with direct onclick) -->
     <div class="header-actions">
       <button class="btn btn-outline btn-sm" id="btnQuickDevMenu" onclick="openDevMenu()" title="Mở Dev Menu của React Native">
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="v-icon text-purple" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2">
           <circle cx="12" cy="12" r="3"></circle>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
         <span>Dev Menu</span>
       </button>
       <button class="btn btn-outline btn-sm" id="btnQuickRotate" onclick="togglePhoneRotation()" title="Xoay màn hình">
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="v-icon text-amber" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2">
           <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
         </svg>
         <span>Xoay</span>
       </button>
       <button class="btn btn-outline btn-sm" id="btnConnectWifiModal" onclick="openWifiModal()" title="Kết nối qua Wi-Fi ADB">
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="v-icon text-indigo" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2">
           <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
           <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
           <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
@@ -84,7 +85,7 @@
         <span>Wi-Fi ADB</span>
       </button>
       <button class="btn btn-primary btn-sm" id="btnQuickReload" onclick="reloadApp()" title="Tải lại ứng dụng">
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="v-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2">
           <path d="M23 4v6h-6"></path>
           <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
         </svg>
@@ -225,19 +226,31 @@
           <div class="console-tab-header">
             <div class="console-tabs">
               <button class="tab-btn active" data-tab="tab-build" onclick="switchTab('tab-build')">
-                <span class="tab-dot dot-yellow"></span>
+                <svg class="v-icon tab-icon text-amber" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <polyline points="4 17 10 11 4 5"></polyline>
+                  <line x1="12" y1="19" x2="20" y2="19"></line>
+                </svg>
                 <span>Build Console</span>
               </button>
               <button class="tab-btn" data-tab="tab-metro" onclick="switchTab('tab-metro')">
-                <span class="tab-dot dot-green"></span>
+                <svg class="v-icon tab-icon text-emerald" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
                 <span>App Logs & Dev</span>
               </button>
               <button class="tab-btn" data-tab="tab-logcat" onclick="switchTab('tab-logcat')">
-                <span class="tab-dot dot-cyan"></span>
+                <svg class="v-icon tab-icon text-cyan" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <rect x="5" y="2" width="14" height="20" rx="3"></rect>
+                  <line x1="12" y1="18" x2="12" y2="18.01"></line>
+                </svg>
                 <span>Android Logcat</span>
               </button>
               <button class="tab-btn" data-tab="tab-info" onclick="switchTab('tab-info')">
-                <span class="tab-dot dot-purple"></span>
+                <svg class="v-icon tab-icon text-purple" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
                 <span>Thông tin môi trường</span>
               </button>
             </div>
@@ -306,8 +319,8 @@
             <div class="tab-pane" id="tab-info">
               <div class="device-info-grid" id="deviceInfoGrid">
                 <div class="info-card">
-                  <span class="info-label" style="display: flex; align-items: center; gap: 5px;">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                  <span class="info-label" style="display: flex; align-items: center; gap: 6px;">
+                    <svg class="v-icon text-cyan" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
                       <rect x="5" y="2" width="14" height="20" rx="3"></rect>
                       <line x1="12" y1="18" x2="12" y2="18.01"></line>
                     </svg>
@@ -316,9 +329,9 @@
                   <strong class="info-val" id="infoDeviceModel">Google Pixel 8 Pro (Standalone)</strong>
                 </div>
                 <div class="info-card">
-                  <span class="info-label" style="display: flex; align-items: center; gap: 5px;">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="3" y="11" width="18" height="10" rx="2"></rect>
+                  <span class="info-label" style="display: flex; align-items: center; gap: 6px;">
+                    <svg class="v-icon text-emerald" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <rect x="4" y="11" width="16" height="10" rx="2"></rect>
                       <circle cx="12" cy="5" r="2"></circle>
                       <path d="M12 7v4"></path>
                       <line x1="8" y1="16" x2="8" y2="16.01"></line>
@@ -329,28 +342,28 @@
                   <strong class="info-val" id="infoAndroidVer">Android 14 (API 34 - UpsideDownCake)</strong>
                 </div>
                 <div class="info-card">
-                  <span class="info-label" style="display: flex; align-items: center; gap: 5px;">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="3" y="3" width="18" height="18" rx="2"></rect>
-                      <path d="M3 9h18M9 21V9"></path>
+                  <span class="info-label" style="display: flex; align-items: center; gap: 6px;">
+                    <svg class="v-icon text-purple" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
                     </svg>
                     Độ phân giải Viewport:
                   </span>
                   <strong class="info-val" id="infoResolution">1080 x 2400 px (390 x 820 CSS @ 88% Scale)</strong>
                 </div>
                 <div class="info-card">
-                  <span class="info-label" style="display: flex; align-items: center; gap: 5px;">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
-                      <circle cx="11" cy="11" r="8"></circle>
-                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  <span class="info-label" style="display: flex; align-items: center; gap: 6px;">
+                    <svg class="v-icon text-cyan" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                      <polyline points="2 17 12 22 22 17"></polyline>
+                      <polyline points="2 12 12 17 22 12"></polyline>
                     </svg>
                     Mật độ điểm ảnh:
                   </span>
                   <strong class="info-val" id="infoDpi">420 DPI (xxhdpi / Scale x3.0)</strong>
                 </div>
                 <div class="info-card">
-                  <span class="info-label" style="display: flex; align-items: center; gap: 5px;">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+                  <span class="info-label" style="display: flex; align-items: center; gap: 6px;">
+                    <svg class="v-icon text-amber" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                     </svg>
                     Engine biên dịch:
@@ -358,8 +371,8 @@
                   <strong class="info-val" id="infoSerial">esbuild Fast Transpiler v0.25</strong>
                 </div>
                 <div class="info-card">
-                  <span class="info-label" style="display: flex; align-items: center; gap: 5px;">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                  <span class="info-label" style="display: flex; align-items: center; gap: 6px;">
+                    <svg class="v-icon text-emerald" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
                       <circle cx="12" cy="12" r="10"></circle>
                       <polyline points="12 6 12 12 16 14"></polyline>
                     </svg>
@@ -368,8 +381,8 @@
                   <strong class="info-val" id="infoSpeed">~100ms - 500ms (Cực nhanh)</strong>
                 </div>
                 <div class="info-card">
-                  <span class="info-label" style="display: flex; align-items: center; gap: 5px;">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                  <span class="info-label" style="display: flex; align-items: center; gap: 6px;">
+                    <svg class="v-icon text-cyan" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
                       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                       <circle cx="12" cy="12" r="3"></circle>
                     </svg>
@@ -378,8 +391,8 @@
                   <strong class="info-val" id="infoWatcher">Live Hot Reload (Tự reload khi Ctrl+S)</strong>
                 </div>
                 <div class="info-card">
-                  <span class="info-label" style="display: flex; align-items: center; gap: 5px;">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                  <span class="info-label" style="display: flex; align-items: center; gap: 6px;">
+                    <svg class="v-icon text-purple" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
                       <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
                       <line x1="8" y1="21" x2="16" y2="21"></line>
                       <line x1="12" y1="17" x2="12" y2="21"></line>
@@ -389,10 +402,11 @@
                   <strong class="info-val" id="infoPlatform">Electron Desktop + Web Standalone</strong>
                 </div>
                 <div class="info-card">
-                  <span class="info-label" style="display: flex; align-items: center; gap: 5px;">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                  <span class="info-label" style="display: flex; align-items: center; gap: 6px;">
+                    <svg class="v-icon text-emerald" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
                       <rect x="1" y="6" width="18" height="12" rx="2" ry="2"></rect>
                       <line x1="23" y1="11" x2="23" y2="13"></line>
+                      <polyline points="11 9 7 13 13 13 9 17"></polyline>
                     </svg>
                     Trạng thái nguồn:
                   </span>

@@ -183,11 +183,41 @@
   <!-- In-app Dev Menu -->
   <div id="devMenuOverlay" onclick="closeDevMenu(event)">
     <div class="dev-menu-card" onclick="event.stopPropagation()">
-      <div class="dev-menu-header">React Native Dev Menu</div>
-      <div class="dev-menu-item" onclick="reloadApp()">🔄 Reload (R+R)</div>
-      <div class="dev-menu-item" onclick="toggleInspector()">🔍 Toggle Element Inspector</div>
-      <div class="dev-menu-item" onclick="toggleColorTheme()">🌓 Chuyển đổi Dark / Light Theme</div>
-      <div class="dev-menu-item" onclick="closeDevMenu()">✕ Đóng</div>
+      <div class="dev-menu-header" style="display: flex; align-items: center; gap: 8px;">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#00f0ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        <span>React Native Dev Menu</span>
+      </div>
+      <div class="dev-menu-item" onclick="reloadApp()" style="display: flex; align-items: center; gap: 8px;">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#00f0ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 4v6h-6"></path>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+        <span>Reload (R+R)</span>
+      </div>
+      <div class="dev-menu-item" onclick="toggleInspector()" style="display: flex; align-items: center; gap: 8px;">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#10b981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <span>Toggle Element Inspector</span>
+      </div>
+      <div class="dev-menu-item" onclick="toggleColorTheme()" style="display: flex; align-items: center; gap: 8px;">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"></circle>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+        </svg>
+        <span>Chuyển đổi Dark / Light Theme</span>
+      </div>
+      <div class="dev-menu-item" onclick="closeDevMenu()" style="display: flex; align-items: center; gap: 8px; color: #f43f5e;">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#f43f5e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+        <span>Đóng</span>
+      </div>
     </div>
   </div>
 
@@ -274,13 +304,13 @@
       if (!data || !data.type) return;
 
       if (data.type === 'reload') {
-        sendToParent('info', '⚡ [FastRefresh] Reload signal received. Refreshing simulator runtime...');
+        sendToParent('info', '[FastRefresh] Reload signal received. Refreshing simulator runtime...');
         location.reload();
       } else if (data.type === 'dev_menu') {
-        sendToParent('info', '⚙️ [DevMenu] React Native Developer Menu opened');
+        sendToParent('info', '[DevMenu] React Native Developer Menu opened');
         openDevMenu();
       } else if (data.type === 'android_back') {
-        sendToParent('info', '🔙 [HardwareBack] Android Back button pressed');
+        sendToParent('info', '[HardwareBack] Android Back button pressed');
         window.dispatchEvent(new Event('android_back'));
       }
     });
@@ -292,19 +322,19 @@
       const tag = target.tagName.toLowerCase();
       const role = target.getAttribute('role') || target.getAttribute('accessibilityrole') || tag;
       if (text) {
-        sendToParent('info', `👆 [Touch] Tapped <${role}> "${text}" at (${Math.round(e.clientX)}, ${Math.round(e.clientY)})`);
+        sendToParent('info', `[Touch] Tapped <${role}> "${text}" at (${Math.round(e.clientX)}, ${Math.round(e.clientY)})`);
       }
     }, true);
 
     // 7. Initial Lifecycle Logs
-    sendToParent('info', '📱 [Runtime] Virtual Android Simulator initialized (Viewport: 390x820 @ 88% scale)');
-    sendToParent('info', '🌐 [Bridge] Fast Refresh & WebSocket log transport connected');
+    sendToParent('info', '[Runtime] Virtual Android Simulator initialized (Viewport: 390x820 @ 88% scale)');
+    sendToParent('info', '[Bridge] Fast Refresh & WebSocket log transport connected');
 
     // 8. Load Active React Native Bundle
     const script = document.createElement('script');
     script.src = `/api/virtual-build/bundle.js?t=${Date.now()}`;
     script.onload = () => {
-      sendToParent('info', '🚀 [ReactNative:Ready] App component successfully mounted on Virtual Screen');
+      sendToParent('info', '[ReactNative:Ready] App component successfully mounted on Virtual Screen');
     };
     script.onerror = () => {
       console.warn('Chưa có bundle React Native. Vui lòng bấm "BUILD & RUN APP" trên bảng điều khiển.');
