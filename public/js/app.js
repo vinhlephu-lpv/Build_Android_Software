@@ -618,6 +618,16 @@ function selectCurrentExploredFolder() {
 window.selectCurrentExploredFolder = selectCurrentExploredFolder;
 
 async function triggerNativeFolderDialog() {
+  if (window.electronAPI && typeof window.electronAPI.openDirectoryDialog === 'function') {
+    try {
+      const res = await window.electronAPI.openDirectoryDialog();
+      if (res && res.success && res.path) {
+        selectExploredProject(res.path);
+      }
+      return;
+    } catch (e) {}
+  }
+
   showToast('🪟 Đang gọi hộp thoại Windows Explorer...');
   try {
     const res = await fetch('/api/dialog/pick-folder', { method: 'POST' });
@@ -630,6 +640,10 @@ async function triggerNativeFolderDialog() {
 window.triggerNativeFolderDialog = triggerNativeFolderDialog;
 
 async function browseProjectFolder() {
+  if (window.electronAPI && typeof window.electronAPI.openDirectoryDialog === 'function') {
+    triggerNativeFolderDialog();
+    return;
+  }
   openProjectExplorerModal();
 }
 window.browseProjectFolder = browseProjectFolder;

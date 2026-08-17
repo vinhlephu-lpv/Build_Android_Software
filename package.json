@@ -2,10 +2,12 @@
   "name": "build-android-software",
   "version": "1.0.0",
   "description": "Desktop tool to build, run and interact with React Native CLI apps on an Android device simulator",
-  "main": "server.js",
+  "main": "electron/main.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "app": "electron .",
+    "electron": "electron ."
   },
   "keywords": [
     "react-native",
@@ -33,5 +35,8 @@
     "react-dom": "^19.2.8",
     "react-native-web": "^0.21.2",
     "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^43.4.0"
   }
 }
