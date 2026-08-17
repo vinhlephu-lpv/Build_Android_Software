@@ -191,13 +191,13 @@ function setColorProfile(profile) {
 
   if (profile === 'super-vivid') {
     wrapper.classList.add('color-super-vivid');
-    showToast('🌈 Chế độ màn hình: Siêu Rực Rỡ (DCI-P3)');
+    showToast('Chế độ màn hình: DCI-P3 Siêu Rực Rỡ', 'info');
   } else if (profile === 'natural') {
     wrapper.classList.add('color-natural');
-    showToast('🖥️ Chế độ màn hình: Tự Nhiên (sRGB)');
+    showToast('Chế độ màn hình: RGB Chuẩn (Tự Nhiên)', 'info');
   } else {
     wrapper.classList.add('color-vivid');
-    showToast('✨ Chế độ màn hình: AMOLED Tươi Sáng');
+    showToast('Chế độ màn hình: AMOLED Tươi Sáng', 'info');
   }
 
   if (select) select.value = profile;
@@ -357,7 +357,7 @@ async function refreshDevices() {
     // Primary: Virtual Standalone Simulator
     const optVirtual = document.createElement('option');
     optVirtual.value = 'virtual';
-    optVirtual.textContent = '📱 Máy Ảo Nội Bộ (Không cần Studio)';
+    optVirtual.textContent = 'Máy Ảo Nội Bộ (Standalone)';
     if (previousSelected === 'virtual') optVirtual.selected = true;
     el.deviceSelect.appendChild(optVirtual);
 
@@ -365,7 +365,7 @@ async function refreshDevices() {
     state.devices.forEach(d => {
       const opt = document.createElement('option');
       opt.value = d.serial;
-      opt.textContent = `🔌 ${d.model} (${d.serial})`;
+      opt.textContent = `${d.model} (${d.serial})`;
       if (d.serial === previousSelected) opt.selected = true;
       el.deviceSelect.appendChild(opt);
     });
@@ -436,9 +436,9 @@ function updateDeviceInfoDisplay(info) {
   el.infoAndroidVer.textContent = `Android ${info.androidVersion} (API ${info.sdkLevel})`;
   el.infoResolution.textContent = `${info.width} x ${info.height} px`;
   el.infoDpi.textContent = `${info.density} DPI`;
-  el.infoBattery.textContent = `${info.batteryLevel}% ${info.isCharging ? '⚡ (Đang sạc)' : ''}`;
+  el.infoBattery.textContent = `${info.batteryLevel}% ${info.isCharging ? '(Đang sạc)' : ''}`;
   el.infoSerial.textContent = info.serial;
-  el.statusBattery.textContent = `${info.batteryLevel}% ${info.isCharging ? '⚡' : '🔋'}`;
+  el.statusBattery.innerHTML = `<span>${info.batteryLevel}%</span>`;
 }
 
 // ==========================================
@@ -471,8 +471,12 @@ async function renderRecentProjects() {
     if (recents.length > 0) {
       container.innerHTML = recents.map(p => {
         const shortName = p.split(/[\\/]/).pop() || p;
-        return `<button class="dropdown-item" onclick="selectRecentProject('${p.replace(/\\/g, '\\\\')}')">
-          <span>🚀 <strong>${shortName}</strong></span>
+        return `<button class="dropdown-item" onclick="selectRecentProject('${p.replace(/\\/g, '\\\\')}')" style="display: flex; align-items: center; gap: 8px;">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
+            <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path>
+          </svg>
+          <strong>${shortName}</strong>
           <span style="font-size: 0.65rem; color: var(--cyan-neon); margin-left: auto; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p}</span>
         </button>`;
       }).join('');
@@ -498,8 +502,12 @@ async function renderRecentProjects() {
 
     container.innerHTML = recents.map(p => {
       const shortName = p.split(/[\\/]/).pop() || p;
-      return `<button class="dropdown-item" onclick="selectRecentProject('${p.replace(/\\/g, '\\\\')}')">
-        <span>🚀 <strong>${shortName}</strong></span>
+      return `<button class="dropdown-item" onclick="selectRecentProject('${p.replace(/\\/g, '\\\\')}')" style="display: flex; align-items: center; gap: 8px;">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
+          <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path>
+        </svg>
+        <strong>${shortName}</strong>
         <span style="font-size: 0.65rem; color: var(--cyan-neon); margin-left: auto; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p}</span>
       </button>`;
     }).join('');
@@ -557,12 +565,21 @@ async function loadDiscoveredProjectsInModal() {
       list.innerHTML = data.projects.map(p => `
         <div style="background: rgba(13, 18, 30, 0.9); border: 1px solid var(--border-glass); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 4px; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--cyan-neon)'" onmouseout="this.style.borderColor='var(--border-glass)'">
           <div style="display: flex; align-items: center; justify-content: space-between;">
-            <strong style="color: var(--text-main); font-size: 0.88rem;">🚀 ${p.name}</strong>
+            <strong style="color: var(--text-main); font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
+                <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path>
+              </svg>
+              ${p.name}
+            </strong>
             <span style="font-size: 0.68rem; background: var(--cyan-glow); color: var(--cyan-neon); padding: 2px 6px; border-radius: 4px;">RN v${p.reactNativeVersion}</span>
           </div>
           <div style="font-size: 0.68rem; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace;">${p.path}</div>
-          <button class="btn btn-primary btn-sm" onclick="selectExploredProject('${p.path.replace(/\\/g, '\\\\')}')" style="margin-top: 6px; width: 100%; font-size: 0.75rem; padding: 4px 8px;">
-            ⚡ Chọn dự án này
+          <button class="btn btn-primary btn-sm" onclick="selectExploredProject('${p.path.replace(/\\/g, '\\\\')}')" style="margin-top: 6px; width: 100%; font-size: 0.75rem; padding: 4px 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+            <span>Chọn dự án này</span>
           </button>
         </div>
       `).join('');
@@ -603,8 +620,11 @@ async function browseDirectory(dirPath) {
 
           return `
             <div style="display: flex; align-items: center; padding: 6px 8px; border-radius: 4px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04);" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">
-              <span onclick="browseDirectory('${f.path.replace(/\\/g, '\\\\')}')" style="flex: 1; display: flex; align-items: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.82rem; color: var(--text-code);">
-                📁 <strong>${f.name}</strong> ${isRNBadge}
+              <span onclick="browseDirectory('${f.path.replace(/\\/g, '\\\\')}')" style="flex: 1; display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.82rem; color: var(--text-code);">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <strong>${f.name}</strong> ${isRNBadge}
               </span>
               ${actionBtn}
             </div>
@@ -629,7 +649,7 @@ function selectExploredProject(path) {
   if (input) input.value = path;
   saveProjectPath(path);
   inspectProject();
-  showToast(`🚀 Đã chọn dự án: ${path}`);
+  showToast(`Đã chọn dự án: ${path}`, 'success');
 }
 window.selectExploredProject = selectExploredProject;
 
@@ -649,7 +669,7 @@ async function triggerNativeFolderDialog() {
     } catch (e) {}
   }
 
-  showToast('🪟 Đang gọi hộp thoại Windows Explorer...');
+  showToast('Đang gọi hộp thoại Windows Explorer...', 'info');
   try {
     const res = await fetch('/api/dialog/pick-folder', { method: 'POST' });
     const data = await res.json();
@@ -679,9 +699,9 @@ async function pasteProjectFromClipboard() {
       if (input) input.value = path;
       saveProjectPath(path);
       inspectProject();
-      showToast(`📋 Đã dán đường dẫn: ${path}`);
+      showToast(`Đã dán đường dẫn: ${path}`, 'success');
     } else {
-      showToast('⚠️ Clipboard không có đường dẫn nào!');
+      showToast('Clipboard không có đường dẫn nào!', 'error');
     }
   } catch (err) {
     const manual = prompt('Dán đường dẫn thư mục dự án React Native vào đây:');
@@ -690,7 +710,7 @@ async function pasteProjectFromClipboard() {
       if (input) input.value = manual.trim();
       saveProjectPath(manual.trim());
       inspectProject();
-      showToast(`📋 Đã thiết lập: ${manual.trim()}`);
+      showToast(`Đã thiết lập: ${manual.trim()}`, 'success');
     }
   }
 }
@@ -702,7 +722,7 @@ function selectRecentProject(path) {
   if (input) input.value = path;
   saveProjectPath(path);
   inspectProject();
-  showToast(`📁 Đã mở dự án: ${path}`);
+  showToast(`Đã mở dự án: ${path}`, 'success');
 }
 window.selectRecentProject = selectRecentProject;
 
@@ -713,7 +733,7 @@ function resetDefaultProjectPath() {
   if (input) input.value = defaultPath;
   saveProjectPath(defaultPath);
   inspectProject();
-  showToast('🔄 Đã đặt lại đường dẫn mặc định (ExampleApp)');
+  showToast('Đã đặt lại đường dẫn mặc định (ExampleApp)', 'info');
 }
 window.resetDefaultProjectPath = resetDefaultProjectPath;
 
@@ -721,7 +741,7 @@ function onProjectPathChanged(val) {
   if (val && val.trim()) {
     saveProjectPath(val.trim());
     inspectProject();
-    showToast(`💾 Đã lưu đường dẫn: ${val.trim()}`);
+    showToast(`Đã lưu đường dẫn: ${val.trim()}`, 'success');
   }
 }
 window.onProjectPathChanged = onProjectPathChanged;
@@ -745,7 +765,7 @@ async function inspectProject() {
       appendBuildLog({
         timestamp: new Date().toISOString(),
         level: 'info',
-        message: `✅ Nhận diện dự án React Native: ${data.project.name} (RN v${data.project.reactNativeVersion})`
+        message: `[Success] Nhận diện dự án React Native: ${data.project.name} (RN v${data.project.reactNativeVersion})`
       });
     }
   } catch (e) {}
@@ -790,19 +810,19 @@ async function startBuild() {
   });
   appendBuildLog({
     level: 'info',
-    message: `🚀 BẮT ĐẦU BIÊN DỊCH REACT NATIVE (STANDALONE SIMULATOR)`
+    message: `[Pipeline] BẮT ĐẦU BIÊN DỊCH REACT NATIVE (STANDALONE SIMULATOR)`
   });
   appendBuildLog({
     level: 'info',
-    message: `📁 Thư mục dự án: ${projectPath}`
+    message: `[Project] Thư mục dự án: ${projectPath}`
   });
   appendBuildLog({
     level: 'info',
-    message: `⚡ Engine: esbuild Fast Transpiler v0.25 (Flow Strip + JSX AST Pipeline)`
+    message: `[Engine] esbuild Fast Transpiler v0.25 (Flow Strip + JSX AST Pipeline)`
   });
   appendBuildLog({
     level: 'info',
-    message: `📱 Thiết bị đích: Google Pixel 8 Pro (Android 14 API 34 / Standalone Virtual)`
+    message: `[Device] Google Pixel 8 Pro (Android 14 API 34 / Standalone Virtual)`
   });
   appendBuildLog({
     level: 'info',
@@ -820,39 +840,39 @@ async function startBuild() {
 
     appendBuildLog({
       level: 'info',
-      message: '🔍 [1/4] Đang quét cấu trúc dự án & tìm kiếm Entry Point (App.tsx)...'
+      message: '[1/4 Scan] Đang quét cấu trúc dự án & tìm kiếm Entry Point (App.tsx)...'
     });
     appendBuildLog({
       level: 'info',
-      message: '🧩 [2/4] Nạp các Module Native Bridges:'
+      message: '[2/4 Bridge] Nạp các Module Native Bridges:'
     });
     appendBuildLog({
       level: 'info',
-      message: '   ├─ ✓ react-native-web (v0.19.13 Core Bridge)'
+      message: '   ├─ [Bridge] react-native-web (v0.19.13 Core Bridge)'
     });
     appendBuildLog({
       level: 'info',
-      message: '   ├─ ✓ @react-navigation/native (Stack & Navigation Container)'
+      message: '   ├─ [Bridge] @react-navigation/native (Stack & Navigation Container)'
     });
     appendBuildLog({
       level: 'info',
-      message: '   ├─ ✓ react-native-safe-area-context (Padding Insets: 0px)'
+      message: '   ├─ [Bridge] react-native-safe-area-context (Padding Insets: 0px)'
     });
     appendBuildLog({
       level: 'info',
-      message: '   ├─ ✓ react-native-vector-icons & lucide-react-native'
+      message: '   ├─ [Bridge] react-native-vector-icons & lucide-react-native'
     });
     appendBuildLog({
       level: 'info',
-      message: '   ├─ ✓ @shopify/flash-list, fast-image & linear-gradient'
+      message: '   ├─ [Bridge] @shopify/flash-list, fast-image & linear-gradient'
     });
     appendBuildLog({
       level: 'info',
-      message: '   └─ ✓ react-native-reanimated & gesture-handler'
+      message: '   └─ [Bridge] react-native-reanimated & gesture-handler'
     });
     appendBuildLog({
       level: 'info',
-      message: '⚙️ [3/4] Biên dịch TypeScript AST, đóng gói Stylesheets & gỡ Flow types...'
+      message: '[3/4 Transpile] Biên dịch TypeScript AST, đóng gói Stylesheets & gỡ Flow types...'
     });
 
     addLogcatEntry({
@@ -885,19 +905,19 @@ async function startBuild() {
       if (data.success) {
         if (el.progressBarFill) el.progressBarFill.style.width = '100%';
         if (el.progressPercent) el.progressPercent.textContent = '100%';
-        if (el.progressStatusText) el.progressStatusText.textContent = `✅ Biên dịch thành công (${data.bundleSizeKb} KB) trong ${data.elapsed}ms!`;
+        if (el.progressStatusText) el.progressStatusText.textContent = `Biên dịch thành công (${data.bundleSizeKb} KB) trong ${data.elapsed}ms!`;
 
         appendBuildLog({
           level: 'info',
-          message: `📦 [4/4] Đóng gói Bundle hoàn tất: Dung lượng ${data.bundleSizeKb} KB`
+          message: `[4/4 Bundle] Đóng gói Bundle hoàn tất: Dung lượng ${data.bundleSizeKb} KB`
         });
         appendBuildLog({
           level: 'success',
-          message: `✅ [Build Pipeline] Biên dịch thành công trong ${data.elapsed}ms!`
+          message: `[Build Pipeline] Biên dịch thành công trong ${data.elapsed}ms!`
         });
         appendBuildLog({
           level: 'info',
-          message: '📱 [Simulator] Đang truyền tải Bytecode vào Canvas máy ảo nội bộ...'
+          message: '[Simulator] Đang truyền tải Bytecode vào Canvas máy ảo nội bộ...'
         });
 
         // App Logs & Dev (Metro tab)
@@ -942,41 +962,41 @@ async function startBuild() {
 
         appendBuildLog({
           level: 'success',
-          message: '✨ [Ready] Ứng dụng đã hiển thị và sẵn sàng tương tác trên máy ảo!'
+          message: '[Ready] Ứng dụng đã hiển thị và sẵn sàng tương tác trên máy ảo!'
         });
         appendBuildLog({
           level: 'info',
-          message: '👁️ [Watcher] Trình theo dõi Live Hot Reload đang hoạt động (nhấn Ctrl+S trong code để tự động cập nhật).'
+          message: '[Watcher] Trình theo dõi Live Hot Reload đang hoạt động (nhấn Ctrl+S trong code để tự động cập nhật).'
         });
 
-        showToast(`✅ Build thành công trong ${data.elapsed}ms!`);
+        showToast(`Build thành công trong ${data.elapsed}ms!`, 'success');
 
         setTimeout(() => {
           if (el.buildProgressContainer) el.buildProgressContainer.style.display = 'none';
         }, 3000);
       } else {
-        if (el.progressStatusText) el.progressStatusText.textContent = `❌ Lỗi: ${data.error}`;
+        if (el.progressStatusText) el.progressStatusText.textContent = `Lỗi: ${data.error}`;
         if (el.progressBarFill) el.progressBarFill.style.background = 'var(--danger)';
         appendBuildLog({
           level: 'error',
-          message: `❌ [Build Error] ${data.error}`
+          message: `[Build Error] ${data.error}`
         });
         addLogcatEntry({
           tag: 'AndroidRuntime',
           message: `FATAL EXCEPTION: ${data.error}`,
           level: 'error'
         });
-        showToast(`❌ Lỗi biên dịch: ${data.error}`);
+        showToast(`Lỗi biên dịch: ${data.error}`, 'error');
       }
     } catch (err) {
       state.isBuilding = false;
       if (el.btnBuildAndRun) el.btnBuildAndRun.disabled = false;
-      if (el.progressStatusText) el.progressStatusText.textContent = `❌ Lỗi kết nối: ${err.message}`;
+      if (el.progressStatusText) el.progressStatusText.textContent = `Lỗi kết nối: ${err.message}`;
       appendBuildLog({
         level: 'error',
-        message: `❌ [Network Error] ${err.message}`
+        message: `[Network Error] ${err.message}`
       });
-      showToast(`❌ Lỗi kết nối: ${err.message}`);
+      showToast(`Lỗi kết nối: ${err.message}`, 'error');
     }
   } else {
     // Mode 2: External Native Gradle Build
@@ -1015,7 +1035,7 @@ function triggerHotReloadUI(info) {
     }, 2200);
   }
 
-  showToast(`⚡ Hot Reload: ${info?.changedFile || 'mã nguồn'} (${info?.elapsed || 0}ms)`);
+  showToast(`Hot Reload: ${info?.changedFile || 'mã nguồn'} (${info?.elapsed || 0}ms)`, 'info');
 
   if (state.selectedDevice === 'virtual' && el.simulatorIframe) {
     el.simulatorIframe.src = `simulator.html?t=${Date.now()}`;
@@ -1028,7 +1048,7 @@ function reloadApp() {
     el.simulatorIframe.src = `simulator.html?t=${Date.now()}`;
     appendMetroLog({
       type: 'stdout',
-      message: '🔄 [Reload] Đã tải lại mã nguồn ứng dụng trên máy ảo!'
+      message: '[Reload] Đã tải lại mã nguồn ứng dụng trên máy ảo!'
     });
   } else {
     fetch('/api/metro/reload', {
@@ -1088,14 +1108,14 @@ function updateBuildStatus(statusData) {
     el.btnCancelBuild.style.display = 'none';
 
     if (statusData.status === 'success') {
-      el.progressStatusText.textContent = '✅ Đã hoàn tất và nạp app thành công!';
+      el.progressStatusText.textContent = 'Đã hoàn tất và nạp app thành công!';
       el.progressBarFill.style.width = '100%';
       el.progressPercent.textContent = '100%';
       setTimeout(() => {
         el.buildProgressContainer.style.display = 'none';
       }, 3000);
     } else if (statusData.status === 'error') {
-      el.progressStatusText.textContent = '❌ Lỗi biên dịch. Xem tab Build Console.';
+      el.progressStatusText.textContent = 'Lỗi biên dịch. Xem tab Build Console.';
       el.progressBarFill.style.background = 'var(--danger)';
     }
   }
@@ -1233,9 +1253,25 @@ function showToast(message, type = 'info') {
   const container = document.getElementById('toastContainer');
   if (!container) return;
 
+  let iconSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+  if (type === 'success' || message.includes('thành công') || message.includes('hoàn tất')) {
+    iconSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+  } else if (type === 'error' || message.includes('Lỗi') || message.includes('thất bại')) {
+    iconSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#f43f5e" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
+  } else if (message.includes('Hot Reload') || message.includes('Reload')) {
+    iconSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="color: #00f0ff;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`;
+  } else if (message.includes('thư mục') || message.includes('dự án')) {
+    iconSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#00f0ff" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`;
+  }
+
+  const cleanMessage = message.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F000}-\u{1F02F}\u{1F0A0}-\u{1F0FF}\u{1F100}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, '').trim();
+
   const toast = document.createElement('div');
   toast.className = 'toast-item';
-  toast.innerHTML = `<span>${message}</span>`;
+  toast.style.display = 'flex';
+  toast.style.alignItems = 'center';
+  toast.style.gap = '8px';
+  toast.innerHTML = `<span style="display: flex; align-items: center;">${iconSvg}</span><span>${cleanMessage}</span>`;
   container.appendChild(toast);
 
   setTimeout(() => {
@@ -1251,11 +1287,11 @@ window.showToast = showToast;
 // Tool Action Functions
 // ==========================================
 function takeScreenshot() {
-  showToast('📸 Đã chụp ảnh màn hình máy ảo thành công!');
+  showToast('Đã chụp ảnh màn hình máy ảo thành công!', 'success');
   appendBuildLog({
     timestamp: new Date().toISOString(),
     level: 'info',
-    message: '📸 [Snapshot] Đã lưu ảnh chụp màn hình máy ảo vào bộ nhớ tạm.'
+    message: '[Snapshot] Đã lưu ảnh chụp màn hình máy ảo vào bộ nhớ tạm.'
   });
 }
 window.takeScreenshot = takeScreenshot;
@@ -1289,12 +1325,12 @@ function togglePhoneRotation(forceState) {
     frame.classList.add('landscape');
     frame.style.width = '840px';
     frame.style.height = '380px';
-    showToast('🔄 Chế độ: Màn hình ngang (Landscape 840x380)');
+    showToast('Chế độ: Màn hình ngang (Landscape 840x380)', 'info');
   } else {
     frame.classList.remove('landscape');
     frame.style.width = '390px';
     frame.style.height = '820px';
-    showToast('📱 Chế độ: Màn hình dọc (Portrait 390x820)');
+    showToast('Chế độ: Màn hình dọc (Portrait 390x820)', 'info');
   }
   applyZoom(state.scale ? Math.round(state.scale * 100) : 80);
 }
@@ -1381,7 +1417,7 @@ async function startExportPackage() {
   if (progressText) progressText.textContent = `Đang thực thi Gradle build (${type})... Vui lòng theo dõi cửa sổ Terminal hoặc tab Build Console!`;
 
   switchTab('tab-build');
-  showToast(`🚀 Đang đóng gói ${type.toUpperCase()}...`);
+  showToast(`Đang đóng gói ${type.toUpperCase()}...`, 'info');
 
   try {
     const res = await fetch('/api/build/package', {
@@ -1401,15 +1437,15 @@ async function startExportPackage() {
         document.getElementById('packageResultSize').textContent = `${data.sizeMb} MB (${data.fileName})`;
         document.getElementById('packageResultPath').textContent = data.filePath;
       }
-      showToast(`🎉 Xuất file ${data.fileName} (${data.sizeMb} MB) thành công!`);
+      showToast(`Xuất file ${data.fileName} (${data.sizeMb} MB) thành công!`, 'success');
     } else {
-      showToast(`❌ Lỗi đóng gói: ${data.error}`);
+      showToast(`Lỗi đóng gói: ${data.error}`, 'error');
       alert(`Không thể xuất gói:\n${data.error}`);
     }
   } catch (err) {
     if (startBtn) startBtn.disabled = false;
     if (progressBox) progressBox.style.display = 'none';
-    showToast(`❌ Lỗi kết nối: ${err.message}`);
+    showToast(`Lỗi kết nối: ${err.message}`, 'error');
     alert(`Lỗi kết nối server: ${err.message}`);
   }
 }
@@ -1417,7 +1453,7 @@ window.startExportPackage = startExportPackage;
 
 async function cleanAndRebuild() {
   const projectPath = state.projectPath;
-  showToast('🧹 Đang dọn dẹp Cache & Biên dịch lại...');
+  showToast('Đang dọn dẹp Cache & Biên dịch lại...', 'info');
 
   // If project has android directory, launch clean in terminal too!
   if (state.projectInfo?.hasAndroid) {
@@ -1428,12 +1464,12 @@ async function cleanAndRebuild() {
         body: JSON.stringify({
           cwd: `${projectPath}\\android`,
           command: 'gradlew.bat clean',
-          title: `🧹 Gradle Clean - [${state.projectInfo.name || 'App'}]`
+          title: `Gradle Clean - [${state.projectInfo.name || 'App'}]`
         })
       });
       appendBuildLog({
         level: 'info',
-        message: '🖥️ [Terminal] Đã mở cửa sổ Terminal ngoài để chạy lệnh "gradlew.bat clean"...'
+        message: '[Terminal] Đã mở cửa sổ Terminal ngoài để chạy lệnh "gradlew.bat clean"...'
       });
     } catch (e) {}
   }
@@ -1451,7 +1487,7 @@ async function revealPackageFile() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ filePath: lastExportedFilePath })
     });
-    showToast('📂 Đã mở thư mục chứa file');
+    showToast('Đã mở thư mục chứa file', 'info');
   } catch (e) {
     showToast(`Lỗi: ${e.message}`);
   }
@@ -1467,14 +1503,14 @@ window.downloadPackageFile = downloadPackageFile;
 function clearCurrentLogs() {
   const activeTab = document.querySelector('.tab-btn.active')?.dataset?.tab || 'tab-build';
   if (activeTab === 'tab-build') {
-    el.buildConsoleOutput.innerHTML = '<span class="log-info">🧹 Đã xóa toàn bộ logs biên dịch.</span>';
+    el.buildConsoleOutput.innerHTML = '<span class="log-info">Đã xóa toàn bộ logs biên dịch.</span>';
   } else if (activeTab === 'tab-metro') {
-    el.metroConsoleOutput.innerHTML = '<span class="log-info">🧹 Đã xóa toàn bộ logs ứng dụng.</span>';
+    el.metroConsoleOutput.innerHTML = '<span class="log-info">Đã xóa toàn bộ logs ứng dụng.</span>';
   } else if (activeTab === 'tab-logcat') {
     state.allLogcatEntries = [];
-    el.logcatStreamOutput.innerHTML = '<div class="log-line log-info"><span class="log-msg">🧹 Đã xóa Android Logcat.</span></div>';
+    el.logcatStreamOutput.innerHTML = '<div class="log-line log-info"><span class="log-msg">Đã xóa Android Logcat.</span></div>';
   }
-  showToast('🗑️ Đã xóa nội dung console hiện tại');
+  showToast('Đã xóa nội dung console hiện tại', 'info');
 }
 window.clearCurrentLogs = clearCurrentLogs;
 
@@ -1557,17 +1593,17 @@ function setupEventListeners() {
       });
       const data = await res.json();
       if (data.success) {
-        el.wifiFeedback.innerHTML = '<span class="log-success">✅ Kết nối thành công!</span>';
-        showToast('✅ Đã kết nối thiết bị Wi-Fi!');
+        el.wifiFeedback.innerHTML = '<span class="log-success">Kết nối thành công!</span>';
+        showToast('Đã kết nối thiết bị Wi-Fi!', 'success');
         setTimeout(() => {
           closeWifiModal();
           refreshDevices();
         }, 1000);
       } else {
-        el.wifiFeedback.innerHTML = `<span class="log-error">❌ ${data.message || data.error}</span>`;
+        el.wifiFeedback.innerHTML = `<span class="log-error">${data.message || data.error}</span>`;
       }
     } catch (err) {
-      el.wifiFeedback.innerHTML = `<span class="log-error">❌ ${err.message}</span>`;
+      el.wifiFeedback.innerHTML = `<span class="log-error">${err.message}</span>`;
     }
   });
 

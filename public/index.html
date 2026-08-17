@@ -30,9 +30,13 @@
       <div class="device-select-wrapper">
         <label for="deviceSelect">Môi trường:</label>
         <select id="deviceSelect" class="select-input-sm">
-          <option value="virtual" selected>📱 Máy Ảo Nội Bộ</option>
+          <option value="virtual" selected>Máy Ảo Nội Bộ (Standalone)</option>
         </select>
-        <button id="btnRefreshDevices" class="icon-btn-sm" onclick="refreshDevices()" title="Quét thiết bị ngoài">🔄</button>
+        <button id="btnRefreshDevices" class="icon-btn-sm" onclick="refreshDevices()" title="Quét thiết bị ngoài" style="display: flex; align-items: center; justify-content: center;">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+          </svg>
+        </button>
       </div>
 
       <div class="status-divider"></div>
@@ -48,9 +52,9 @@
       <div style="display: flex; align-items: center; gap: 6px;">
         <label for="colorProfileSelect" style="font-size: 0.75rem; color: var(--text-muted); white-space: nowrap;">Màu màn hình:</label>
         <select id="colorProfileSelect" class="select-input-sm" onchange="setColorProfile(this.value)" style="border-color: rgba(0, 240, 255, 0.4); font-size: 0.72rem; padding: 2px 6px;">
-          <option value="natural" selected>🖥️ Chuẩn RGB (Tự Nhiên)</option>
-          <option value="vivid">✨ AMOLED Tươi Sáng</option>
-          <option value="super-vivid">🌈 Siêu Rực Rỡ (DCI-P3)</option>
+          <option value="natural" selected>RGB Chuẩn (Tự Nhiên)</option>
+          <option value="vivid">AMOLED Tươi Sáng</option>
+          <option value="super-vivid">DCI-P3 Siêu Rực Rỡ</option>
         </select>
       </div>
     </div>
@@ -58,16 +62,29 @@
     <!-- Header Actions (Integrated Quick Tools with direct onclick) -->
     <div class="header-actions">
       <button class="btn btn-outline btn-sm" id="btnQuickDevMenu" onclick="openDevMenu()" title="Mở Dev Menu của React Native">
-        <span>⚙️ Dev Menu</span>
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        <span>Dev Menu</span>
       </button>
       <button class="btn btn-outline btn-sm" id="btnQuickRotate" onclick="togglePhoneRotation()" title="Xoay màn hình">
-        <span>🔄 Xoay</span>
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+        </svg>
+        <span>Xoay</span>
       </button>
       <button class="btn btn-outline btn-sm" id="btnConnectWifiModal" onclick="openWifiModal()" title="Kết nối qua Wi-Fi ADB">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+          <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+          <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+          <line x1="12" y1="20" x2="12.01" y2="20"></line>
+        </svg>
         <span>Wi-Fi ADB</span>
       </button>
       <button class="btn btn-primary btn-sm" id="btnQuickReload" onclick="reloadApp()" title="Tải lại ứng dụng">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M23 4v6h-6"></path>
           <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
         </svg>
@@ -99,17 +116,31 @@
                 <div class="speaker-grill"></div>
               </div>
               <div class="status-icons">
-                <span class="icon-signal">5G</span>
-                <span class="icon-wifi">📶</span>
-                <span class="icon-battery" id="statusBattery">100% 🔋</span>
+                <span class="icon-signal" style="font-size: 0.65rem; font-weight: 800;">5G</span>
+                <span class="icon-wifi" style="display: flex; align-items: center;">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+                    <path d="M12 18c.8 0 1.5.7 1.5 1.5S12.8 21 12 21s-1.5-.7-1.5-1.5.7-1.5 1.5-1.5zm-5.66-3.66a8 8 0 0 1 11.32 0l-1.42 1.42a6 6 0 0 0-8.48 0l-1.42-1.42zm-2.83-2.83a12 12 0 0 1 16.98 0l-1.42 1.42a10 10 0 0 0-14.14 0l-1.42-1.42z"/>
+                  </svg>
+                </span>
+                <span class="icon-battery" id="statusBattery" style="display: flex; align-items: center; gap: 3px;">
+                  <span>100%</span>
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="1" y="6" width="18" height="12" rx="2" ry="2"></rect>
+                    <line x1="23" y1="11" x2="23" y2="13"></line>
+                    <rect x="3" y="8" width="12" height="8" fill="currentColor"></rect>
+                  </svg>
+                </span>
               </div>
             </div>
 
             <!-- Screen View Area (Full Screen Edge-to-Edge) -->
             <div class="screen-canvas-wrapper" id="canvasWrapper">
               <!-- Live Hot Reload Floating Badge -->
-              <div id="hotReloadBadge" style="position: absolute; top: 12px; left: 50%; transform: translateX(-50%) translateY(-20px); opacity: 0; background: linear-gradient(135deg, #10b981, #06b6d4); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4); pointer-events: none; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); z-index: 9999; display: flex; align-items: center; gap: 4px;">
-                <span>⚡ Hot Reload</span>
+              <div id="hotReloadBadge" style="position: absolute; top: 12px; left: 50%; transform: translateX(-50%) translateY(-20px); opacity: 0; background: linear-gradient(135deg, #10b981, #06b6d4); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4); pointer-events: none; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); z-index: 9999; display: flex; align-items: center; gap: 5px;">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+                <span>Hot Reload</span>
                 <span id="hotReloadTime" style="font-size: 0.68rem; opacity: 0.9;">120ms</span>
               </div>
 
@@ -134,7 +165,11 @@
       <div class="card project-control-card">
         <div class="card-header">
           <div class="card-title">
-            <span class="title-icon">📁</span>
+            <span class="title-icon" style="display: flex; align-items: center;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </span>
             <h2>DỰ ÁN REACT NATIVE</h2>
           </div>
           <div class="project-tags">
@@ -152,18 +187,28 @@
                 <span>⋮</span>
               </button>
               <div class="dropdown-menu" id="projectDropdownMenu">
-                <button class="dropdown-item" onclick="browseProjectFolder()">
-                  <span>📂 Chọn thư mục từ máy tính...</span>
+                <button class="dropdown-item" onclick="browseProjectFolder()" style="display: flex; align-items: center; gap: 8px;">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                  <span>Chọn thư mục từ máy tính...</span>
                 </button>
-                <button class="dropdown-item" onclick="pasteProjectFromClipboard()">
-                  <span>📋 Dán đường dẫn từ Clipboard</span>
+                <button class="dropdown-item" onclick="pasteProjectFromClipboard()" style="display: flex; align-items: center; gap: 8px;">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                  </svg>
+                  <span>Dán đường dẫn từ Clipboard</span>
                 </button>
                 <div class="dropdown-divider"></div>
                 <div class="dropdown-header">Gần đây:</div>
                 <div id="recentProjectsList"></div>
                 <div class="dropdown-divider"></div>
-                <button class="dropdown-item text-danger" onclick="resetDefaultProjectPath()">
-                  <span>🔄 Đặt lại mặc định (ExampleApp)</span>
+                <button class="dropdown-item text-danger" onclick="resetDefaultProjectPath()" style="display: flex; align-items: center; gap: 8px;">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+                  </svg>
+                  <span>Đặt lại mặc định (ExampleApp)</span>
                 </button>
               </div>
             </div>
@@ -209,8 +254,18 @@
                 <input type="text" id="logSearchInput" placeholder="Tìm kiếm log..." class="text-input-sm">
               </div>
 
-              <button class="icon-btn-sm" id="btnClearLogs" onclick="clearCurrentLogs()" title="Xóa logs hiện tại">🗑️</button>
-              <button class="icon-btn-sm active" id="btnToggleAutoScroll" onclick="toggleAutoScroll()" title="Tự động cuộn xuống dưới">⬇️</button>
+              <button class="icon-btn-sm" id="btnClearLogs" onclick="clearCurrentLogs()" title="Xóa logs hiện tại" style="display: flex; align-items: center; justify-content: center;">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+              </button>
+              <button class="icon-btn-sm active" id="btnToggleAutoScroll" onclick="toggleAutoScroll()" title="Tự động cuộn xuống dưới" style="display: flex; align-items: center; justify-content: center;">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <polyline points="19 12 12 19 5 12"></polyline>
+                </svg>
+              </button>
             </div>
           </div>
 
@@ -251,39 +306,96 @@
             <div class="tab-pane" id="tab-info">
               <div class="device-info-grid" id="deviceInfoGrid">
                 <div class="info-card">
-                  <span class="info-label">📱 Thiết bị ảo hóa:</span>
+                  <span class="info-label" style="display: flex; align-items: center; gap: 5px;">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="5" y="2" width="14" height="20" rx="3"></rect>
+                      <line x1="12" y1="18" x2="12" y2="18.01"></line>
+                    </svg>
+                    Thiết bị ảo hóa:
+                  </span>
                   <strong class="info-val" id="infoDeviceModel">Google Pixel 8 Pro (Standalone)</strong>
                 </div>
                 <div class="info-card">
-                  <span class="info-label">🤖 Hệ điều hành:</span>
+                  <span class="info-label" style="display: flex; align-items: center; gap: 5px;">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="11" width="18" height="10" rx="2"></rect>
+                      <circle cx="12" cy="5" r="2"></circle>
+                      <path d="M12 7v4"></path>
+                      <line x1="8" y1="16" x2="8" y2="16.01"></line>
+                      <line x1="16" y1="16" x2="16" y2="16.01"></line>
+                    </svg>
+                    Hệ điều hành:
+                  </span>
                   <strong class="info-val" id="infoAndroidVer">Android 14 (API 34 - UpsideDownCake)</strong>
                 </div>
                 <div class="info-card">
-                  <span class="info-label">📐 Độ phân giải Viewport:</span>
+                  <span class="info-label" style="display: flex; align-items: center; gap: 5px;">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                      <path d="M3 9h18M9 21V9"></path>
+                    </svg>
+                    Độ phân giải Viewport:
+                  </span>
                   <strong class="info-val" id="infoResolution">1080 x 2400 px (390 x 820 CSS @ 88% Scale)</strong>
                 </div>
                 <div class="info-card">
-                  <span class="info-label">🔍 Mật độ điểm ảnh:</span>
+                  <span class="info-label" style="display: flex; align-items: center; gap: 5px;">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    Mật độ điểm ảnh:
+                  </span>
                   <strong class="info-val" id="infoDpi">420 DPI (xxhdpi / Scale x3.0)</strong>
                 </div>
                 <div class="info-card">
-                  <span class="info-label">⚡ Engine biên dịch:</span>
+                  <span class="info-label" style="display: flex; align-items: center; gap: 5px;">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                    Engine biên dịch:
+                  </span>
                   <strong class="info-val" id="infoSerial">esbuild Fast Transpiler v0.25</strong>
                 </div>
                 <div class="info-card">
-                  <span class="info-label">⏱️ Tốc độ đóng gói:</span>
+                  <span class="info-label" style="display: flex; align-items: center; gap: 5px;">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    Tốc độ đóng gói:
+                  </span>
                   <strong class="info-val" id="infoSpeed">~100ms - 500ms (Cực nhanh)</strong>
                 </div>
                 <div class="info-card">
-                  <span class="info-label">👁️ Trình theo dõi Watcher:</span>
+                  <span class="info-label" style="display: flex; align-items: center; gap: 5px;">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    Trình theo dõi Watcher:
+                  </span>
                   <strong class="info-val" id="infoWatcher">Live Hot Reload (Tự reload khi Ctrl+S)</strong>
                 </div>
                 <div class="info-card">
-                  <span class="info-label">🖥️ Nền tảng ứng dụng:</span>
+                  <span class="info-label" style="display: flex; align-items: center; gap: 5px;">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                      <line x1="8" y1="21" x2="16" y2="21"></line>
+                      <line x1="12" y1="17" x2="12" y2="21"></line>
+                    </svg>
+                    Nền tảng ứng dụng:
+                  </span>
                   <strong class="info-val" id="infoPlatform">Electron Desktop + Web Standalone</strong>
                 </div>
                 <div class="info-card">
-                  <span class="info-label">🔋 Trạng thái nguồn:</span>
+                  <span class="info-label" style="display: flex; align-items: center; gap: 5px;">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="1" y="6" width="18" height="12" rx="2" ry="2"></rect>
+                      <line x1="23" y1="11" x2="23" y2="13"></line>
+                    </svg>
+                    Trạng thái nguồn:
+                  </span>
                   <strong class="info-val" id="infoBattery">100% (AC Adapter ảo hóa)</strong>
                 </div>
               </div>
@@ -307,7 +419,11 @@
 
           <button class="btn btn-warning vertical-btn-action" id="btnToggleMetro" onclick="reloadApp()" title="Tải lại mã nguồn ứng dụng">
             <div class="vertical-btn-content">
-              <span class="metro-toggle-icon" style="font-size: 1.15rem;">⚡</span>
+              <span class="metro-toggle-icon" style="display: flex; align-items: center; justify-content: center;">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+              </span>
               <div class="vertical-btn-text">
                 <strong id="btnMetroText">RELOAD</strong>
               </div>
@@ -316,7 +432,12 @@
 
           <button class="btn btn-outline vertical-btn-action" id="btnCleanBuild" onclick="cleanAndRebuild()" title="Dọn dẹp Cache & Biên dịch lại">
             <div class="vertical-btn-content">
-              <span style="font-size: 1.05rem;">🧹</span>
+              <span style="display: flex; align-items: center; justify-content: center;">
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 4l-4 4L6 20a2 2 0 0 0 2 2h2l12-12-4-4z"></path>
+                  <line x1="2" y1="22" x2="6" y2="22"></line>
+                </svg>
+              </span>
               <div class="vertical-btn-text">
                 <strong>CACHE</strong>
               </div>
@@ -326,7 +447,13 @@
           <!-- Export APK / AAB Quick Button -->
           <button class="btn btn-info vertical-btn-action" id="btnExportPackage" onclick="openPackageModal()" title="Xuất file cài đặt APK & AAB (Google Play)" style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(99, 102, 241, 0.3)); border: 1px solid rgba(168, 85, 247, 0.5); color: #e9d5ff;">
             <div class="vertical-btn-content">
-              <span style="font-size: 1.15rem;">📦</span>
+              <span style="display: flex; align-items: center; justify-content: center;">
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                  <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+              </span>
               <div class="vertical-btn-text">
                 <strong>XUẤT</strong>
                 <small>APK/AAB</small>
@@ -336,7 +463,13 @@
 
           <button class="btn btn-danger vertical-btn-action" id="btnCancelBuild" onclick="cancelBuild()" style="display: none;" title="Hủy tiến trình biên dịch">
             <div class="vertical-btn-content">
-              <span style="font-size: 1rem;">⛔</span>
+              <span style="display: flex; align-items: center; justify-content: center;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="15" y1="9" x2="9" y2="15"></line>
+                  <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+              </span>
               <div class="vertical-btn-text">
                 <strong>HỦY</strong>
               </div>
@@ -344,24 +477,20 @@
           </button>
 
           <!-- Live Watcher Mini Badge -->
-          <div class="watcher-status-card" title="Tự động cập nhật tức thì khi lưu file (Ctrl+S)">
-            <span class="pulse-dot"></span>
-            <strong style="font-size: 0.58rem; color: var(--emerald-neon); letter-spacing: 0.3px;">HOT SYNC</strong>
-          </div>
-        </div>
-
-      </div>
-    </section>
-  </main>
-
-  <!-- Build & Export Package Modal (APK & AAB) -->
+          <div cl  <!-- Build & Export Package Modal (APK & AAB) -->
   <div class="modal-overlay" id="packageModal">
     <div class="modal-card pkg-modal-card">
       
       <!-- Premium Modal Header -->
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 10px;">
-          <div class="pkg-header-badge">📦</div>
+          <div class="pkg-header-badge">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+              <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+          </div>
           <div>
             <h3 style="margin: 0; font-size: 0.95rem; font-weight: 800; letter-spacing: 0.3px;">Xuất Gói Cài Đặt Android</h3>
             <div style="font-size: 0.72rem; color: var(--text-dim);">
@@ -370,7 +499,12 @@
             </div>
           </div>
         </div>
-        <button class="modal-close" onclick="closePackageModal()" title="Đóng bảng">✕</button>
+        <button class="modal-close" onclick="closePackageModal()" title="Đóng bảng" style="display: flex; align-items: center; justify-content: center;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
 
       <div class="modal-body" style="padding: 16px;">
@@ -389,7 +523,11 @@
           <!-- Card 1: Debug APK -->
           <div class="pkg-card active-debug" id="opt_debug_apk" onclick="selectPackageType('debug_apk')">
             <div class="pkg-card-top">
-              <div class="pkg-icon-box" style="background: rgba(0, 240, 255, 0.15); color: var(--cyan-neon);">🛠️</div>
+              <div class="pkg-icon-box" style="background: rgba(0, 240, 255, 0.15); color: var(--cyan-neon);">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                </svg>
+              </div>
               <span class="tag tag-rn" style="font-size: 0.6rem; padding: 1px 5px;">Test / QA</span>
             </div>
             <div>
@@ -402,7 +540,14 @@
           <!-- Card 2: Release APK -->
           <div class="pkg-card" id="opt_release_apk" onclick="selectPackageType('release_apk')">
             <div class="pkg-card-top">
-              <div class="pkg-icon-box" style="background: rgba(16, 185, 129, 0.15); color: var(--emerald-neon);">🚀</div>
+              <div class="pkg-icon-box" style="background: rgba(16, 185, 129, 0.15); color: var(--emerald-neon);">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
+                  <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path>
+                  <path d="M9 12H4s.55-3.03 2-4.5c1.2-1.2 3-1.5 3-1.5"></path>
+                  <path d="M15 9V4s3.03.55 4.5 2c1.2 1.2 1.5 3 1.5 3"></path>
+                </svg>
+              </div>
               <span class="tag tag-app" style="font-size: 0.6rem; padding: 1px 5px;">Sideload</span>
             </div>
             <div>
@@ -415,7 +560,13 @@
           <!-- Card 3: Release AAB -->
           <div class="pkg-card" id="opt_release_aab" onclick="selectPackageType('release_aab')">
             <div class="pkg-card-top">
-              <div class="pkg-icon-box" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">🌐</div>
+              <div class="pkg-icon-box" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="2" y1="12" x2="22" y2="12"></line>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+              </div>
               <span class="tag" style="background: rgba(168, 85, 247, 0.2); color: #e9d5ff; border: 1px solid rgba(168, 85, 247, 0.4); font-size: 0.6rem; padding: 1px 5px;">Play Store</span>
             </div>
             <div>
@@ -439,7 +590,13 @@
           <label class="pkg-switch-card" for="chkCleanBuildPackage">
             <input type="checkbox" id="chkCleanBuildPackage" style="accent-color: var(--cyan-neon); transform: scale(1.15); cursor: pointer;">
             <div class="pkg-switch-text">
-              <span class="pkg-switch-title">🧹 Clean Build</span>
+              <span class="pkg-switch-title" style="display: flex; align-items: center; gap: 6px;">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 4l-4 4L6 20a2 2 0 0 0 2 2h2l12-12-4-4z"></path>
+                  <line x1="2" y1="22" x2="6" y2="22"></line>
+                </svg>
+                Clean Build
+              </span>
               <span class="pkg-switch-subtitle">Xóa cache Gradle trước khi build</span>
             </div>
           </label>
@@ -448,7 +605,14 @@
           <label class="pkg-switch-card" for="chkOpenTerminal" style="background: rgba(16, 185, 129, 0.06); border-color: rgba(16, 185, 129, 0.25);">
             <input type="checkbox" id="chkOpenTerminal" checked style="accent-color: var(--emerald-neon); transform: scale(1.15); cursor: pointer;">
             <div class="pkg-switch-text">
-              <span class="pkg-switch-title" style="color: #6ee7b7;">🖥️ Mở Terminal Desktop</span>
+              <span class="pkg-switch-title" style="color: #6ee7b7; display: flex; align-items: center; gap: 6px;">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                  <line x1="8" y1="21" x2="16" y2="21"></line>
+                  <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+                Mở Terminal Desktop
+              </span>
               <span class="pkg-switch-subtitle" style="color: #a7f3d0;">Xem log trực tiếp & Ctrl+C dừng</span>
             </div>
           </label>
@@ -459,7 +623,9 @@
           <div class="pkg-artifact-card">
             <div class="pkg-artifact-header">
               <div class="pkg-artifact-name">
-                <span style="font-size: 1.2rem;">🎉</span>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
                 <span id="packageResultTitle">Gói cài đặt đã sẵn sàng!</span>
               </div>
               <span id="packageResultSize" class="tag tag-app" style="font-size: 0.75rem; padding: 2px 8px; font-weight: 800;">-- MB</span>
@@ -468,11 +634,19 @@
               --
             </div>
             <div class="pkg-artifact-actions">
-              <button class="btn btn-primary btn-sm" id="btnRevealFile" onclick="revealPackageFile()" style="flex: 1; padding: 7px 12px; font-size: 0.78rem;">
-                📂 Mở thư mục chứa file
+              <button class="btn btn-primary btn-sm" id="btnRevealFile" onclick="revealPackageFile()" style="flex: 1; padding: 7px 12px; font-size: 0.78rem; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <span>Mở thư mục chứa file</span>
               </button>
-              <button class="btn btn-success btn-sm" id="btnDownloadPackage" onclick="downloadPackageFile()" style="flex: 1; padding: 7px 12px; font-size: 0.78rem;">
-                ⬇️ Tải file về máy
+              <button class="btn btn-success btn-sm" id="btnDownloadPackage" onclick="downloadPackageFile()" style="flex: 1; padding: 7px 12px; font-size: 0.78rem; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span>Tải file về máy</span>
               </button>
             </div>
           </div>
@@ -490,7 +664,13 @@
             <div class="progress-bar-fill" id="packageProgressFill" style="width: 75%; animation: pulseGlow 1.5s infinite;"></div>
           </div>
           <div id="packageProgressHint" style="font-size: 0.72rem; color: #c7d2fe; background: rgba(99, 102, 241, 0.14); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 8px; padding: 8px 12px; display: flex; align-items: flex-start; gap: 8px; line-height: 1.4;">
-            <span style="font-size: 1rem;">💡</span>
+            <span style="display: flex; align-items: center;">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18h6"></path>
+                <path d="M10 22h4"></path>
+                <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"></path>
+              </svg>
+            </span>
             <div>
               <strong style="color: #ffffff;">Tiến trình đang chạy trong Terminal ngoài:</strong><br>
               Bạn có thể nhấn nút <strong>"Đóng"</strong> bên dưới để tắt bảng này bất kỳ lúc nào, tiến trình build vẫn tiếp tục chạy tự động trong cửa sổ Terminal ngoài Desktop!
@@ -503,12 +683,19 @@
       <!-- Modal Footer -->
       <div class="modal-footer" style="padding: 12px 16px; background: rgba(8, 12, 20, 0.6); display: flex; justify-content: space-between; align-items: center;">
         <div style="font-size: 0.7rem; color: var(--text-dim); display: flex; align-items: center; gap: 5px;">
-          <span>⚡ Gradle 8.x + JDK 17</span>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          <span>Gradle 8.x + JDK 17</span>
         </div>
         <div style="display: flex; gap: 8px;">
           <button class="btn btn-secondary" onclick="closePackageModal()" style="padding: 7px 16px; font-size: 0.8rem;">Đóng</button>
-          <button class="btn btn-primary btn-glow" id="btnStartExportPackage" onclick="startExportPackage()" style="padding: 7px 18px; font-size: 0.8rem; font-weight: 800; background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%); border-color: rgba(168, 85, 247, 0.6);">
-            🚀 Bắt đầu Build & Xuất Gói
+          <button class="btn btn-primary btn-glow" id="btnStartExportPackage" onclick="startExportPackage()" style="padding: 7px 18px; font-size: 0.8rem; font-weight: 800; background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%); border-color: rgba(168, 85, 247, 0.6); display: flex; align-items: center; gap: 6px;">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
+              <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path>
+            </svg>
+            <span>Bắt đầu Build & Xuất Gói</span>
           </button>
         </div>
       </div>
@@ -519,8 +706,21 @@
   <div class="modal-overlay" id="wifiModal">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>Kết nối thiết bị qua Wi-Fi ADB (Tùy chọn)</h3>
-        <button class="modal-close" onclick="closeWifiModal()">✕</button>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+            <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+            <line x1="12" y1="20" x2="12.01" y2="20"></line>
+          </svg>
+          <h3 style="margin: 0; font-size: 0.92rem;">Kết nối thiết bị qua Wi-Fi ADB</h3>
+        </div>
+        <button class="modal-close" onclick="closeWifiModal()" style="display: flex; align-items: center; justify-content: center;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
       <div class="modal-body">
         <p class="modal-desc">Nếu muốn chạy trên điện thoại thật không cần dây, nhập IP & Port của máy Android:</p>
@@ -545,15 +745,29 @@
   <div class="modal-overlay" id="projectExplorerModal">
     <div class="modal-card" style="max-width: 680px; width: 95%;">
       <div class="modal-header">
-        <h3>📂 Chọn dự án React Native trên máy</h3>
-        <button class="modal-close" onclick="closeProjectExplorerModal()">✕</button>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <h3 style="margin: 0; font-size: 0.92rem;">Chọn dự án React Native trên máy</h3>
+        </div>
+        <button class="modal-close" onclick="closeProjectExplorerModal()" style="display: flex; align-items: center; justify-content: center;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
         
         <!-- Discovered Projects (1-Click Select) -->
         <div style="margin-bottom: 16px;">
-          <div style="font-size: 0.82rem; font-weight: 700; color: var(--cyan-neon); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
-            🚀 Dự án React Native tìm thấy trên máy
+          <div style="font-size: 0.82rem; font-weight: 700; color: var(--cyan-neon); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
+              <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path>
+            </svg>
+            <span>Dự án React Native tìm thấy trên máy</span>
           </div>
           <div id="explorerDiscoveredList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px;">
             <div style="font-size: 0.8rem; color: var(--text-dim);">Đang quét các thư mục...</div>
@@ -563,8 +777,11 @@
         <!-- Visual Folder Browser -->
         <div style="border-top: 1px solid var(--border-glass); padding-top: 14px; margin-top: 14px;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-            <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px;">
-              📁 Duyệt cây thư mục (File Explorer)
+            <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span>Duyệt cây thư mục (File Explorer)</span>
             </span>
             <div style="display: flex; gap: 6px;">
               <button class="btn btn-secondary btn-sm" onclick="browseDirectory('D:\\reactnative\\codereact')">D:\reactnative</button>
@@ -575,7 +792,13 @@
 
           <!-- Breadcrumb path bar -->
           <div style="display: flex; align-items: center; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--border-glass); border-radius: 6px; padding: 6px 10px; margin-bottom: 10px; font-family: monospace; font-size: 0.8rem;">
-            <button id="explorerUpBtn" onclick="browseParentDirectory()" style="background: none; border: none; color: var(--cyan-neon); cursor: pointer; margin-right: 8px; font-weight: bold;" title="Lên thư mục cha">⬆️ Lên 1 cấp</button>
+            <button id="explorerUpBtn" onclick="browseParentDirectory()" style="background: none; border: none; color: var(--cyan-neon); cursor: pointer; margin-right: 8px; font-weight: bold; display: flex; align-items: center; gap: 4px;" title="Lên thư mục cha">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="19" x2="12" y2="5"></line>
+                <polyline points="5 12 12 5 19 12"></polyline>
+              </svg>
+              <span>Lên 1 cấp</span>
+            </button>
             <span id="explorerCurrentPath" style="color: var(--text-code); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">D:\reactnative\codereact</span>
             <button id="explorerSelectCurrentBtn" class="btn btn-primary btn-sm" onclick="selectCurrentExploredFolder()" style="margin-left: 8px; font-size: 0.72rem; padding: 3px 8px;">Chọn thư mục này</button>
           </div>
@@ -588,7 +811,12 @@
 
       </div>
       <div class="modal-footer" style="justify-content: space-between;">
-        <button class="btn btn-secondary btn-sm" onclick="triggerNativeFolderDialog()">🪟 Mở hộp thoại Windows OS</button>
+        <button class="btn btn-secondary btn-sm" onclick="triggerNativeFolderDialog()" style="display: flex; align-items: center; gap: 6px;">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+            <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
+          </svg>
+          <span>Mở hộp thoại Windows OS</span>
+        </button>
         <button class="btn btn-secondary" onclick="closeProjectExplorerModal()">Đóng</button>
       </div>
     </div>
