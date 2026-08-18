@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -34,7 +35,7 @@
       overflow-y: auto;
       scrollbar-width: none;
       -ms-overflow-style: none;
-      background: #090d16;
+      background: #f8fafc;
       color: #0f172a;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
@@ -790,6 +791,25 @@
       } else if (data.type === 'android_back') {
         sendToParent('info', '[HardwareBack] Android Back button pressed');
         window.dispatchEvent(new Event('android_back'));
+      } else if (data.type === 'capture_screenshot') {
+        if (typeof html2canvas === 'function') {
+          html2canvas(document.body, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+            logging: false,
+            useCORS: true,
+            allowTaint: true
+          }).then(canvas => {
+            const dataUrl = canvas.toDataURL('image/png');
+            if (window.parent && window.parent !== window) {
+              window.parent.postMessage({ type: 'screenshot_ready', dataUrl }, '*');
+            }
+          }).catch(err => {
+            if (window.parent && window.parent !== window) {
+              window.parent.postMessage({ type: 'screenshot_error', error: err.message }, '*');
+            }
+          });
+        }
       }
     });
 

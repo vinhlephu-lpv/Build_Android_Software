@@ -89,6 +89,15 @@ class AdbService {
     };
   }
 
+  async pairWifi(ip, port, code) {
+    const target = `${ip}:${port}`;
+    const res = await this.execAdb(`pair ${target} ${code}`);
+    return {
+      success: res.success && res.stdout.toLowerCase().includes('successfully paired'),
+      message: res.stdout || res.error
+    };
+  }
+
   async disconnectWifi(ip, port = 5555) {
     const target = `${ip}:${port}`;
     const res = await this.execAdb(`disconnect ${target}`);

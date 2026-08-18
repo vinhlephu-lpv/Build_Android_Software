@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, clipboard, nativeImage } = require('electron');
 const path = require('path');
 const http = require('http');
 
@@ -94,6 +94,106 @@ ipcMain.handle('dialog:openDirectory', async () => {
 
 ipcMain.handle('shell:showItemInFolder', (event, filePath) => {
   if (filePath) shell.showItemInFolder(filePath);
+});
+
+ipcMain.handle('screen:captureRect', async (event, bounds) => {
+  try {
+    if (!mainWindow) return { success: false, error: 'No main window' };
+    
+    let image;
+    if (bounds && bounds.width > 0 && bounds.height > 0) {
+      image = await mainWindow.webContents.capturePage({
+        x: Math.max(0, Math.floor(bounds.x)),
+        y: Math.max(0, Math.floor(bounds.y)),
+        width: Math.ceil(bounds.width),
+        height: Math.ceil(bounds.height)
+      });
+    } else {
+      image = await mainWindow.webContents.capturePage();
+    }
+    
+    clipboard.writeImage(image);
+    return { success: true, dataUrl: image.toDataURL() };
+  } catch (err) {
+    console.error('captureRect error:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('clipboard:writeImage', (event, dataUrl) => {
+  try {
+    if (!dataUrl) return { success: false, error: 'No dataUrl provided' };
+    const img = nativeImage.createFromDataURL(dataUrl);
+    clipboard.writeImage(img);
+    return { success: true };
+  } catch (err) {
+    console.error('Clipboard write error:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('network:getInfo', async () => {
+  try {
+    const os = require('os');
+    const QRCode = require('qrcode');
+    const interfaces = os.networkInterfaces();
+    const addresses = [];
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          addresses.push({
+            name,
+            address: iface.address,
+            previewUrl: `http://${iface.address}:${PORT}/mobile-preview.html`
+          });
+        }
+      }
+    }
+
+    const primary = addresses.find(a => 
+      a.name.toLowerCase().includes('wi-fi') || 
+      a.name.toLowerCase().includes('wlan') || 
+      a.name.toLowerCase().includes('wireless')
+    ) || addresses[0] || { address: 'localhost', previewUrl: `http://localhost:${PORT}/mobile-preview.html` };
+
+    const qrDataUrl = await QRCode.toDataURL(primary.previewUrl, {
+      width: 240,
+      margin: 1,
+      color: {
+        dark: '#0f172a',
+        light: '#ffffff'
+      }
+    });
+
+    return {
+      success: true,
+      port: PORT,
+      primaryIp: primary.address,
+      previewUrl: primary.previewUrl,
+      qrDataUrl,
+      allAddresses: addresses
+    };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+const adbService = require('../src/services/adbService');
+
+ipcMain.handle('device:connectWifi', async (event, { ip, port }) => {
+  try {
+    return await adbService.connectWifi(ip, port);
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+});
+
+ipcMain.handle('device:pairWifi', async (event, { ip, port, code }) => {
+  try {
+    return await adbService.pairWifi(ip, port, code);
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
 });
 
 ipcMain.on('window:minimize', () => {

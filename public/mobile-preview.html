@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>React Native Mobile Live Test - Aurasoft Systems</title>
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      min-height: 100%;
+      background: #f8fafc;
+      color: #0f172a;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-font-smoothing: antialiased;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+    }
+
+    #root {
+      width: 100%;
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Floating Connection Status Pill */
+    .mobile-status-pill {
+      position: fixed;
+      top: env(safe-area-inset-top, 14px);
+      right: 14px;
+      z-index: 99999;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(12px);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      padding: 6px 12px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .pill-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+      animation: pulseDot 2s infinite;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    /* Red Box Error Screen */
+    #redbox {
+      position: fixed;
+      inset: 0;
+      background: #bd1e24;
+      color: #ffffff;
+      padding: 24px 16px;
+      z-index: 999999;
+      display: none;
+      flex-direction: column;
+      font-family: monospace;
+      overflow-y: auto;
+    }
+
+    #redbox h2 {
+      font-size: 1.1rem;
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+
+    #redbox pre {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      flex: 1;
+      margin-bottom: 16px;
+      overflow-y: auto;
+    }
+
+    #redbox button {
+      background: #ffffff;
+      color: #bd1e24;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      align-self: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Live Status Chip on Real Phone -->
+  <div class="mobile-status-pill" id="statusPill">
+    <span class="pill-dot"></span>
+    <span id="pillText">LAN Live Hot Reload</span>
+  </div>
+
+  <div id="root">
+    <!-- Initial Loading View -->
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; text-align: center; background: radial-gradient(circle at 50% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 60%), linear-gradient(180deg, #ffffff, #f1f5f9);">
+      <div style="width: 70px; height: 70px; border-radius: 22px; background: linear-gradient(135deg, #4f46e5, #06b6d4); display: flex; align-items: center; justify-content: center; color: white; margin-bottom: 16px; box-shadow: 0 12px 28px rgba(79, 70, 229, 0.3);">
+        <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.2">
+          <rect x="5" y="2" width="14" height="20" rx="3"></rect>
+          <line x1="12" y1="18" x2="12" y2="18.01"></line>
+        </svg>
+      </div>
+      <h2 style="font-size: 1.3rem; font-weight: 800; color: #0f172a; margin-bottom: 6px;">Đang tải ứng dụng...</h2>
+      <p style="font-size: 0.8rem; color: #64748b;">Kết nối Live Hot Reload từ máy tính thành công</p>
+    </div>
+  </div>
+
+  <!-- Red Box Error Screen -->
+  <div id="redbox">
+    <h2 id="redboxTitle">React Native Runtime Error</h2>
+    <pre id="redboxStack"></pre>
+    <button onclick="location.reload()">Reload App</button>
+  </div>
+
+  <script>
+    // Auto Fade Out Status Pill after 4s
+    setTimeout(() => {
+      const pill = document.getElementById('statusPill');
+      if (pill) pill.style.opacity = '0.35';
+    }, 4000);
+
+    // WebSocket Live Hot Reload Transport
+    const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const streamWs = new WebSocket(`${wsProto}//${location.host}/stream`);
+
+    streamWs.onopen = () => {
+      console.log('⚡ Connected to PC Dev Server via WebSocket');
+    };
+
+    streamWs.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'status') {
+          if (data.status === 'hot_reload' || data.status === 'compiling_done') {
+            const pill = document.getElementById('statusPill');
+            const pillText = document.getElementById('pillText');
+            if (pill && pillText) {
+              pill.style.opacity = '1';
+              pillText.textContent = `⚡ Hot Reload (${data.data?.elapsed || '100'}ms)`;
+              setTimeout(() => pill.style.opacity = '0.35', 3000);
+            }
+            location.reload();
+          }
+        }
+      } catch (e) {}
+    };
+
+    // Error boundary
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      const redbox = document.getElementById('redbox');
+      const title = document.getElementById('redboxTitle');
+      const stack = document.getElementById('redboxStack');
+      title.textContent = msg;
+      stack.textContent = error && error.stack ? error.stack : (url + ':' + lineNo);
+      redbox.style.display = 'flex';
+      return true;
+    };
+
+    // Load active React Native bundle
+    const script = document.createElement('script');
+    script.src = `/api/virtual-build/bundle.js?t=${Date.now()}`;
+    script.onload = () => {
+      console.log('✅ React Native mounted on real phone!');
+    };
+    script.onerror = () => {
+      console.warn('Chưa có bundle. Hãy bấm "BUILD & RUN APP" trên máy tính.');
+    };
+    document.body.appendChild(script);
+  </script>
+</body>
+</html>

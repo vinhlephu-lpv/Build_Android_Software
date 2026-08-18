@@ -111,12 +111,13 @@ class BuildService {
 
   async buildAndRun(projectPath, serial, options = {}) {
     if (this.isBuilding) {
-      return { success: false, error: 'A build process is already in progress' };
+      return { success: false, error: 'Tiến trình build đang chạy...' };
     }
 
     this.isBuilding = true;
     this.buildHistory = [];
-    this.broadcastStatus('preparing', { message: 'Analyzing project and environment...' });
+    this.broadcastStatus('compiling', { message: `Bắt đầu kết nối và biên dịch cho ${serial || 'thiết bị'}...`, progress: 25 });
+
     this.broadcastLog(`====================================================`, 'info');
     this.broadcastLog(`🚀 INITIATING BUILD PIPELINE`, 'info');
     this.broadcastLog(`📁 Target Project: ${projectPath}`, 'info');
@@ -134,34 +135,34 @@ class BuildService {
     const androidDir = path.join(projectPath, 'android');
     if (!projectInfo.hasAndroid || !projectInfo.hasGradlew) {
       this.isBuilding = false;
-      this.broadcastLog('❌ Android folder or gradlew not found in project!', 'error');
+      this.broadcastLog('❌ Thư mục android hoặc gradlew.bat không tìm thấy trong dự án!', 'error');
       this.broadcastStatus('error', { error: 'Android directory missing' });
       return { success: false, error: 'Android directory missing' };
     }
 
     // Step 1: Start Metro Bundler in background if not already alive
-    this.broadcastLog('⚡ Checking Metro Bundler...', 'info');
+    this.broadcastLog('⚡ [Metro] Đang kiểm tra Metro Bundler...', 'info');
     const isMetroUp = await metroService.checkMetroAlive();
     if (!isMetroUp) {
-      this.broadcastLog('⚡ Metro Bundler is not running. Starting automatically...', 'info');
+      this.broadcastLog('⚡ [Metro] Đang tự động khởi động Metro Bundler trên cổng 8081...', 'info');
       await metroService.startMetro(projectPath);
     } else {
-      this.broadcastLog('✅ Metro Bundler is active on port 8081', 'info');
+      this.broadcastLog('✅ [Metro] Metro Bundler đang hoạt động trên cổng 8081', 'info');
     }
 
     // Step 2: Reverse ADB Port
     if (serial) {
-      this.broadcastLog(`🔗 Configuring reverse port forwarding for device ${serial}...`, 'info');
+      this.broadcastLog(`🔗 [ADB] Đang cấu hình chuyển tiếp cổng reverse tcp:8081 cho thiết bị ${serial}...`, 'info');
       await adbService.reversePort(serial, 8081);
     }
 
     // Step 3: Run Gradle Build
-    this.broadcastStatus('compiling', { message: 'Compiling Android debug build via Gradle...' });
-    this.broadcastLog('🔨 Executing Gradle build: gradlew.bat assembleDebug...', 'info');
+    this.broadcastStatus('compiling', { message: 'Đang chạy Gradle assembleDebug (--console=plain)...', progress: 30 });
+    this.broadcastLog('🔨 [Gradle] Bắt đầu thực thi: gradlew.bat assembleDebug --console=plain...', 'info');
 
     const isWindows = process.platform === 'win32';
-    const gradlewCmd = isWindows ? 'gradlew.bat' : './gradlew';
-    const gradleArgs = ['assembleDebug'];
+    const gradlewCmd = isWindows ? path.join(androidDir, 'gradlew.bat') : './gradlew';
+    const gradleArgs = ['assembleDebug', '--console=plain'];
 
     if (options.clean) {
       gradleArgs.unshift('clean');
@@ -182,14 +183,41 @@ class BuildService {
 
       this.currentProcess = proc;
 
+      let taskCount = 0;
+
       proc.stdout.on('data', (data) => {
         const text = data.toString();
-        this.broadcastLog(text, 'stdout');
+        const lines = text.split(/\r?\n/);
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          if (trimmed.startsWith('> Task')) {
+            taskCount++;
+            this.broadcastLog(trimmed, 'task');
+            this.broadcastStatus('compiling', {
+              message: trimmed,
+              progress: Math.min(30 + taskCount * 2, 85)
+            });
+          } else if (trimmed.includes('BUILD SUCCESSFUL')) {
+            this.broadcastLog(`🎉 ${trimmed}`, 'success');
+            this.broadcastStatus('compiling', { message: trimmed, progress: 90 });
+          } else if (trimmed.includes('BUILD FAILED')) {
+            this.broadcastLog(`❌ ${trimmed}`, 'error');
+          } else if (trimmed.startsWith('WARNING:') || trimmed.startsWith('WARN')) {
+            this.broadcastLog(trimmed, 'warn');
+          } else {
+            this.broadcastLog(trimmed, 'stdout');
+          }
+        }
       });
 
       proc.stderr.on('data', (data) => {
         const text = data.toString();
-        this.broadcastLog(text, 'stderr');
+        const lines = text.split(/\r?\n/);
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed) this.broadcastLog(trimmed, 'stderr');
+        }
       });
 
       proc.on('close', (code) => {

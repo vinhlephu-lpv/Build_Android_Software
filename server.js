@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const cors = require('cors');
 const { WebSocketServer } = require('ws');
 const open = require('open');
@@ -96,6 +97,63 @@ app.post('/api/watcher/toggle', (req, res) => {
   res.json({ success: true, enabled });
 });
 
+// Network LAN IP Discovery & Mobile Preview Route with Server-Side QR Code
+const QRCode = require('qrcode');
+
+app.get('/api/network/info', async (req, res) => {
+  try {
+    const interfaces = os.networkInterfaces();
+    const addresses = [];
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          addresses.push({
+            name,
+            address: iface.address,
+            previewUrl: `http://${iface.address}:${PORT}/mobile-preview.html`
+          });
+        }
+      }
+    }
+
+    const primary = addresses.find(a => 
+      a.name.toLowerCase().includes('wi-fi') || 
+      a.name.toLowerCase().includes('wlan') || 
+      a.name.toLowerCase().includes('wireless')
+    ) || addresses[0] || { address: 'localhost', previewUrl: `http://localhost:${PORT}/mobile-preview.html` };
+
+    // Generate high-resolution QR DataURL directly on server!
+    let qrDataUrl = '';
+    try {
+      qrDataUrl = await QRCode.toDataURL(primary.previewUrl, {
+        width: 220,
+        margin: 1,
+        color: {
+          dark: '#0f172a',
+          light: '#ffffff'
+        }
+      });
+    } catch (qrErr) {
+      console.warn('QR Code generation warning:', qrErr.message);
+    }
+
+    res.json({
+      success: true,
+      port: PORT,
+      primaryIp: primary.address,
+      previewUrl: primary.previewUrl,
+      qrDataUrl,
+      allAddresses: addresses
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/mobile-preview', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'mobile-preview.html'));
+});
+
 // ==========================================
 // REST APIs: General & External ADB Device Support
 // ==========================================
@@ -127,6 +185,31 @@ app.post('/api/connect-wifi', async (req, res) => {
   if (!ip) return res.status(400).json({ success: false, error: 'IP is required' });
   const result = await adbService.connectWifi(ip, port || 5555);
   res.json(result);
+});
+
+// Start Build & Run on Real / ADB Device
+app.post('/api/build/start', async (req, res) => {
+  const { projectPath, serial, clean } = req.body;
+  const targetProject = projectPath || defaultProjectPath;
+
+  // Run asynchronously and stream logs
+  buildService.buildAndRun(targetProject, serial, { clean }).catch((err) => {
+    console.error('buildAndRun async error:', err);
+  });
+
+  res.json({ success: true, message: 'Build pipeline started' });
+});
+
+app.post('/api/build/cancel', (req, res) => {
+  if (buildService.currentProcess) {
+    try {
+      buildService.currentProcess.kill();
+      buildService.isBuilding = false;
+      buildService.broadcastLog('🛑 Tiến trình build đã bị hủy bởi người dùng', 'warn');
+      buildService.broadcastStatus('idle');
+    } catch (e) {}
+  }
+  res.json({ success: true });
 });
 
 // Package Export (APK / AAB)
@@ -459,6 +542,14 @@ app.get('*', (req, res, next) => {
 // ==========================================
 // Start Server
 // ==========================================
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.log(`ℹ️ [Server] Port ${PORT} is already in active use. Reusing running backend instance.`);
+  } else {
+    console.error('❌ [Server] Unexpected error:', err);
+  }
+});
+
 server.listen(PORT, () => {
   const url = `http://localhost:${PORT}`;
   console.log(`\n======================================================`);
@@ -467,8 +558,4 @@ server.listen(PORT, () => {
   console.log(`📂 Default RN Project: ${defaultProjectPath}`);
   console.log(`📱 Mode: Standalone Virtual Simulator (Zero Android Studio / Physical Device Required)`);
   console.log(`======================================================\n`);
-
-  if (process.env.OPEN_BROWSER !== 'false') {
-    open(url).catch(() => {});
-  }
 });

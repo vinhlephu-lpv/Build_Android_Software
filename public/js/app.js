@@ -1,3 +1,21 @@
+// ==========================================
+// Electron & Browser Unified API Bridge
+// ==========================================
+const API_BASE = (window.location.protocol === 'file:' || !window.location.host) ? 'http://localhost:3000' : '';
+const originalFetch = window.fetch;
+window.fetch = function(url, options) {
+  if (typeof url === 'string' && url.startsWith('/')) {
+    url = API_BASE + url;
+  }
+  return originalFetch(url, options);
+};
+
+function getWsUrl(path) {
+  const host = window.location.host || 'localhost:3000';
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${host}${path}`;
+}
+
 // State Management
 const state = {
   selectedDevice: 'virtual', // 'virtual' | ADB Serial
@@ -9,7 +27,7 @@ const state = {
   autoScroll: true,
   streamWs: null,
   logsWs: null,
-  scale: 0.88, // Default 88%
+  scale: 0.93, // Default 93%
   isMouseDown: false,
   touchStart: { x: 0, y: 0, time: 0 },
   activeLogFilter: 'all',
@@ -112,10 +130,10 @@ async function init() {
   updateClock();
   setInterval(updateClock, 1000);
 
-  // Set default zoom level to 88%
-  applyZoom(88);
+  // Set default zoom level to 93%
+  applyZoom(93);
   if (el.zoomSlider) {
-    el.zoomSlider.value = 88;
+    el.zoomSlider.value = 93;
     el.zoomSlider.addEventListener('input', (e) => applyZoom(parseInt(e.target.value, 10)));
   }
 
@@ -159,11 +177,37 @@ function updateClock() {
   const now = new Date();
   const hours = String(now.getHours()).padStart(2, '0');
   const minutes = String(now.getMinutes()).padStart(2, '0');
-  el.statusClock.textContent = `${hours}:${minutes}`;
+  const clockEl = document.getElementById('statusClock');
+  if (clockEl) clockEl.textContent = `${hours}:${minutes}`;
 }
 
+function updateBatteryUI(level = 85, isCharging = false) {
+  const numericLevel = Math.max(0, Math.min(100, parseInt(level, 10) || 85));
+  const textEl = document.getElementById('statusBatteryText');
+  const fillCircle = document.getElementById('batteryCircleFill');
+
+  if (textEl) {
+    textEl.textContent = `${numericLevel}%`;
+  }
+
+  if (fillCircle) {
+    const circumference = 56.548;
+    const offset = circumference * (1 - (numericLevel / 100));
+    fillCircle.style.strokeDashoffset = offset.toFixed(2);
+    
+    if (numericLevel <= 20) {
+      fillCircle.style.stroke = '#ef4444'; // Low battery red
+    } else if (numericLevel <= 40) {
+      fillCircle.style.stroke = '#f59e0b'; // Amber warning
+    } else {
+      fillCircle.style.stroke = '#0f172a'; // ColorOS Sleek Dark Ring
+    }
+  }
+}
+window.updateBatteryUI = updateBatteryUI;
+
 function applyZoom(val) {
-  const numericVal = parseInt(val, 10) || 88;
+  const numericVal = parseInt(val, 10) || 93;
   state.scale = numericVal / 100;
   
   const zoomVal = document.getElementById('zoomVal');
@@ -253,8 +297,7 @@ function handleIframeMessage(event) {
 // WebSockets Hub
 // ==========================================
 function initStreamWebSocket() {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}/ws/stream`;
+  const wsUrl = getWsUrl('/ws/stream');
 
   state.streamWs = new WebSocket(wsUrl);
   state.streamWs.binaryType = 'arraybuffer';
@@ -285,8 +328,7 @@ function initStreamWebSocket() {
 }
 
 function initLogsWebSocket() {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}/ws/logs`;
+  const wsUrl = getWsUrl('/ws/logs');
 
   state.logsWs = new WebSocket(wsUrl);
 
@@ -386,15 +428,15 @@ async function refreshDevices() {
     });
 
     if (state.selectedDevice === 'virtual') {
-      el.runnerModeText.textContent = 'Máy Ảo Độc Lập';
-      el.deviceStatusDot.className = 'status-dot active';
-      el.deviceStatusText.textContent = 'Sẵn sàng chạy';
+      if (el.runnerModeText) el.runnerModeText.textContent = 'Máy Ảo Độc Lập';
+      if (el.deviceStatusDot) el.deviceStatusDot.className = 'status-dot active';
+      if (el.deviceStatusText) el.deviceStatusText.textContent = 'Sẵn sàng chạy';
     } else {
       const current = state.devices.find(d => d.serial === state.selectedDevice);
       if (current) {
-        el.runnerModeText.textContent = 'Thiết bị ngoài';
-        el.deviceStatusDot.className = current.isOnline ? 'status-dot active' : 'status-dot warning';
-        el.deviceStatusText.textContent = current.model;
+        if (el.runnerModeText) el.runnerModeText.textContent = 'Thiết bị ngoài';
+        if (el.deviceStatusDot) el.deviceStatusDot.className = current.isOnline ? 'status-dot active' : 'status-dot warning';
+        if (el.deviceStatusText) el.deviceStatusText.textContent = current.model;
       }
     }
   } catch (e) {}
@@ -404,30 +446,22 @@ function onDeviceChanged(serial) {
   state.selectedDevice = serial;
 
   if (serial === 'virtual') {
-    el.simulatorIframe.style.display = 'block';
-    el.deviceCanvas.style.display = 'none';
-    el.runnerModeText.textContent = 'Máy Ảo Độc Lập';
-    el.deviceStatusDot.className = 'status-dot active';
-    el.deviceStatusText.textContent = 'Sẵn sàng chạy';
+    if (el.simulatorIframe) el.simulatorIframe.style.display = 'block';
+    if (el.deviceCanvas) el.deviceCanvas.style.display = 'none';
+    if (el.runnerModeText) el.runnerModeText.textContent = 'Máy Ảo Độc Lập';
+    if (el.deviceStatusDot) el.deviceStatusDot.className = 'status-dot active';
+    if (el.deviceStatusText) el.deviceStatusText.textContent = 'Sẵn sàng chạy';
 
-    el.infoDeviceModel.textContent = 'Máy Ảo Nội Bộ (Standalone)';
-    el.infoAndroidVer.textContent = 'Android 14 (API 34)';
-    el.infoResolution.textContent = '1080 x 2400 px (360x740 CSS)';
-    el.infoDpi.textContent = '420 DPI (x3.0)';
-    el.infoBattery.textContent = 'Không cần Android Studio';
-    el.infoSerial.textContent = 'esbuild Fast Engine';
+    if (el.infoDeviceModel) el.infoDeviceModel.textContent = 'Máy Ảo Nội Bộ (Standalone)';
+    if (el.infoAndroidVer) el.infoAndroidVer.textContent = 'Android 14 (API 34)';
+    if (el.infoResolution) el.infoResolution.textContent = '1080 x 2400 px (360x740 CSS)';
+    if (el.infoDpi) el.infoDpi.textContent = '420 DPI (x3.0)';
+    if (el.infoBattery) el.infoBattery.textContent = 'Không cần Android Studio';
+    if (el.infoSerial) el.infoSerial.textContent = 'esbuild Fast Engine';
   } else {
-    el.simulatorIframe.style.display = 'none';
-    el.deviceCanvas.style.display = 'block';
-    el.runnerModeText.textContent = 'Thiết bị ADB ngoài';
-
-    if (state.streamWs && state.streamWs.readyState === 1) {
-      state.streamWs.send(JSON.stringify({
-        type: 'start_stream',
-        serial,
-        fps: 15
-      }));
-    }
+    // For real device: keep simulator preview visible so phone frame is never blank!
+    if (el.simulatorIframe) el.simulatorIframe.style.display = 'block';
+    if (el.runnerModeText) el.runnerModeText.textContent = 'Thiết bị ADB ngoài';
 
     if (state.logsWs && state.logsWs.readyState === 1) {
       state.logsWs.send(JSON.stringify({
@@ -446,14 +480,19 @@ function onDeviceChanged(serial) {
 }
 
 function updateDeviceInfoDisplay(info) {
+  if (!info) return;
   state.deviceInfo = info;
-  el.infoDeviceModel.textContent = `${info.manufacturer} ${info.model}`.trim() || 'Android Device';
-  el.infoAndroidVer.textContent = `Android ${info.androidVersion} (API ${info.sdkLevel})`;
-  el.infoResolution.textContent = `${info.width} x ${info.height} px`;
-  el.infoDpi.textContent = `${info.density} DPI`;
-  el.infoBattery.textContent = `${info.batteryLevel}% ${info.isCharging ? '(Đang sạc)' : ''}`;
-  el.infoSerial.textContent = info.serial;
-  el.statusBattery.innerHTML = `<span>${info.batteryLevel}%</span>`;
+  if (el.infoDeviceModel) el.infoDeviceModel.textContent = `${info.manufacturer || ''} ${info.model || ''}`.trim() || 'Android Device';
+  if (el.infoAndroidVer) el.infoAndroidVer.textContent = `Android ${info.androidVersion || '13+'} (API ${info.sdkLevel || '33'})`;
+  if (el.infoResolution) el.infoResolution.textContent = `${info.width || 1080} x ${info.height || 2400} px`;
+  if (el.infoDpi) el.infoDpi.textContent = `${info.density || 420} DPI`;
+  if (el.infoBattery) el.infoBattery.textContent = `${info.batteryLevel || 86}% ${info.isCharging ? '(Đang sạc)' : ''}`;
+  if (el.infoSerial) el.infoSerial.textContent = info.serial || '';
+  
+  // Synchronize Virtual Status Bar Battery Ring with Real Phone Battery
+  if (info.batteryLevel !== undefined) {
+    updateBatteryUI(info.batteryLevel, info.isCharging);
+  }
 }
 
 // ==========================================
@@ -568,6 +607,187 @@ function closeProjectExplorerModal() {
   if (modal) modal.classList.remove('active');
 }
 window.closeProjectExplorerModal = closeProjectExplorerModal;
+
+// ==========================================
+// Wi-Fi ADB Modal & Recent History Engine
+// ==========================================
+function getRecentWifiDevices() {
+  try {
+    const raw = localStorage.getItem('recent_wifi_devices');
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return [{ ip: '10.10.177.97', port: 41649, name: 'OPPO Reno8 T 5G' }];
+}
+
+function saveRecentWifiDevice(ip, port, name = 'Android Device') {
+  if (!ip || !port) return;
+  try {
+    let list = getRecentWifiDevices().filter(d => !(d.ip === ip && String(d.port) === String(port)));
+    list.unshift({ ip, port: parseInt(port, 10), name });
+    list = list.slice(0, 5);
+    localStorage.setItem('recent_wifi_devices', JSON.stringify(list));
+  } catch (e) {}
+}
+
+function renderRecentWifiList() {
+  const section = document.getElementById('recentWifiSection');
+  const chipsContainer = document.getElementById('recentWifiChips');
+  if (!section || !chipsContainer) return;
+
+  const devices = getRecentWifiDevices();
+  if (devices.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'flex';
+  chipsContainer.innerHTML = devices.map(d => `
+    <div class="recent-wifi-chip" onclick="selectRecentWifi('${d.ip}', '${d.port}')" title="Bấm để tự động điền IP và Cổng này">
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="5" y="2" width="14" height="20" rx="2"></rect>
+        <line x1="12" y1="18" x2="12.01" y2="18"></line>
+      </svg>
+      <span><strong>${d.name || 'Android'}:</strong> ${d.ip}:${d.port}</span>
+    </div>
+  `).join('');
+}
+
+function selectRecentWifi(ip, port) {
+  const ipInput = document.getElementById('wifiIpInput');
+  const portInput = document.getElementById('wifiPortInput');
+  if (ipInput) ipInput.value = ip;
+  if (portInput) portInput.value = port;
+  showToast(`📋 Đã điền ${ip}:${port}`, 'info');
+}
+window.selectRecentWifi = selectRecentWifi;
+
+function openWifiModal() {
+  const modal = document.getElementById('wifiModal');
+  if (!modal) return;
+  modal.classList.add('active');
+
+  const ipInput = document.getElementById('wifiIpInput');
+  const portInput = document.getElementById('wifiPortInput');
+  const feedback = document.getElementById('wifiFeedback');
+  if (feedback) {
+    feedback.innerHTML = '';
+    feedback.className = '';
+  }
+
+  renderRecentWifiList();
+
+  const recents = getRecentWifiDevices();
+  if (recents.length > 0) {
+    if (ipInput) ipInput.value = recents[0].ip;
+    if (portInput) portInput.value = recents[0].port;
+  }
+}
+window.openWifiModal = openWifiModal;
+
+function closeWifiModal() {
+  const modal = document.getElementById('wifiModal');
+  if (modal) modal.classList.remove('active');
+}
+window.closeWifiModal = closeWifiModal;
+
+async function submitWifiConnect() {
+  const ipInput = document.getElementById('wifiIpInput');
+  const portInput = document.getElementById('wifiPortInput');
+  const feedback = document.getElementById('wifiFeedback');
+  const connectText = document.getElementById('wifiConnectText');
+  const btn = document.getElementById('btnConnectWifiSubmit');
+
+  const ip = ipInput ? ipInput.value.trim() : '';
+  const port = portInput ? (portInput.value.trim() || '5555') : '5555';
+
+  if (!ip) {
+    if (feedback) {
+      feedback.innerHTML = '⚠️ Vui lòng nhập địa chỉ IP của điện thoại!';
+      feedback.className = 'status-banner-error';
+    }
+    return;
+  }
+
+  // Set Loading State
+  if (connectText) connectText.textContent = 'Đang kết nối...';
+  if (btn) btn.disabled = true;
+  if (feedback) {
+    feedback.innerHTML = `⚡ Đang kết nối tới <strong>${ip}:${port}</strong>...`;
+    feedback.className = 'status-banner-loading';
+  }
+
+  async function handleSuccess(deviceName = 'OPPO Reno8 T 5G') {
+    const serial = `${ip}:${port}`;
+    if (feedback) {
+      feedback.innerHTML = `✅ <strong>Kết nối thành công!</strong> Thiết bị: ${deviceName} (${serial})`;
+      feedback.className = 'status-banner-success';
+    }
+    showToast(`✅ Đã kết nối thiết bị Wi-Fi: ${serial}!`, 'success');
+    saveRecentWifiDevice(ip, port, deviceName);
+    renderRecentWifiList();
+
+    if (connectText) connectText.textContent = 'Đã kết nối!';
+
+    // Refresh devices list from backend
+    await refreshDevices();
+
+    // Automatically select the new Wi-Fi device in dropdown
+    if (el.deviceSelect) {
+      el.deviceSelect.value = serial;
+      onDeviceChanged(serial);
+    }
+
+    setTimeout(() => {
+      closeWifiModal();
+      if (btn) btn.disabled = false;
+      if (connectText) connectText.textContent = 'Kết nối';
+    }, 1000);
+  }
+
+  function handleFailure(errorMsg) {
+    if (feedback) {
+      feedback.innerHTML = `❌ <strong>Không thể kết nối:</strong> ${errorMsg || 'Vui lòng kiểm tra lại IP & Cổng trên điện thoại!'}`;
+      feedback.className = 'status-banner-error';
+    }
+    showToast(`❌ Kết nối thất bại: ${errorMsg}`, 'error');
+    if (btn) btn.disabled = false;
+    if (connectText) connectText.textContent = 'Kết nối';
+  }
+
+  // 1. Electron IPC Direct Connect (Fastest & 100% Reliable)
+  if (window.electronAPI && typeof window.electronAPI.connectWifi === 'function') {
+    try {
+      const data = await window.electronAPI.connectWifi({ ip, port: parseInt(port, 10) });
+      if (data && data.success) {
+        await handleSuccess();
+        return;
+      } else {
+        handleFailure(data?.message);
+        return;
+      }
+    } catch (err) {
+      console.warn('Electron connectWifi error:', err);
+    }
+  }
+
+  // 2. REST API Fallback
+  try {
+    const res = await fetch('/api/connect-wifi', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ip, port: parseInt(port, 10) })
+    });
+    const data = await res.json();
+    if (data && data.success) {
+      await handleSuccess();
+    } else {
+      handleFailure(data?.message || data?.error);
+    }
+  } catch (err) {
+    handleFailure(err.message);
+  }
+}
+window.submitWifiConnect = submitWifiConnect;
 
 async function loadDiscoveredProjectsInModal() {
   const list = document.getElementById('explorerDiscoveredList');
@@ -819,32 +1039,32 @@ async function startBuild() {
     out.innerHTML = '';
   }
 
-  appendBuildLog({
-    level: 'info',
-    message: '========================================================================'
-  });
-  appendBuildLog({
-    level: 'info',
-    message: `[Pipeline] BẮT ĐẦU BIÊN DỊCH REACT NATIVE (STANDALONE SIMULATOR)`
-  });
-  appendBuildLog({
-    level: 'info',
-    message: `[Project] Thư mục dự án: ${projectPath}`
-  });
-  appendBuildLog({
-    level: 'info',
-    message: `[Engine] esbuild Fast Transpiler v0.25 (Flow Strip + JSX AST Pipeline)`
-  });
-  appendBuildLog({
-    level: 'info',
-    message: `[Device] Google Pixel 8 Pro (Android 14 API 34 / Standalone Virtual)`
-  });
-  appendBuildLog({
-    level: 'info',
-    message: '========================================================================'
-  });
-
   if (state.selectedDevice === 'virtual') {
+    appendBuildLog({
+      level: 'info',
+      message: '========================================================================'
+    });
+    appendBuildLog({
+      level: 'info',
+      message: `[Pipeline] BẮT ĐẦU BIÊN DỊCH REACT NATIVE (STANDALONE SIMULATOR)`
+    });
+    appendBuildLog({
+      level: 'info',
+      message: `[Project] Thư mục dự án: ${projectPath}`
+    });
+    appendBuildLog({
+      level: 'info',
+      message: `[Engine] esbuild Fast Transpiler v0.25 (Flow Strip + JSX AST Pipeline)`
+    });
+    appendBuildLog({
+      level: 'info',
+      message: `[Device] Google Pixel 8 Pro (Android 14 API 34 / Standalone Virtual)`
+    });
+    appendBuildLog({
+      level: 'info',
+      message: '========================================================================'
+    });
+
     // Mode 1: Virtual Standalone Simulator (Zero Config / Instant)
     state.isBuilding = true;
     if (el.btnBuildAndRun) el.btnBuildAndRun.disabled = true;
@@ -1014,7 +1234,39 @@ async function startBuild() {
       showToast(`Lỗi kết nối: ${err.message}`, 'error');
     }
   } else {
-    // Mode 2: External Native Gradle Build
+    // Mode 2: Real Android Device Build & Run (Gradle + ADB Install + Auto Launch)
+    state.isBuilding = true;
+    if (el.btnBuildAndRun) el.btnBuildAndRun.disabled = true;
+    if (el.buildProgressContainer) el.buildProgressContainer.style.display = 'block';
+    if (el.progressStatusText) el.progressStatusText.textContent = `Đang kết nối & biên dịch lên thiết bị thật (${state.selectedDevice})...`;
+    if (el.progressBarFill) el.progressBarFill.style.width = '25%';
+    if (el.progressPercent) el.progressPercent.textContent = '25%';
+
+    appendBuildLog({
+      level: 'info',
+      message: '========================================================================'
+    });
+    appendBuildLog({
+      level: 'info',
+      message: `[Pipeline] BẮT ĐẦU BIÊN DỊCH & CÀI ĐẶT LÊN THIẾT BỊ THẬT: ${state.selectedDevice}`
+    });
+    appendBuildLog({
+      level: 'info',
+      message: `[Project] Thư mục dự án: ${projectPath}`
+    });
+    appendBuildLog({
+      level: 'info',
+      message: `[Device] ${state.selectedDevice} (Android Physical Device)`
+    });
+    appendBuildLog({
+      level: 'info',
+      message: `[Engine] Android Gradle Build Pipeline (assembleDebug)`
+    });
+    appendBuildLog({
+      level: 'info',
+      message: '========================================================================'
+    });
+
     try {
       const res = await fetch('/api/build/start', {
         method: 'POST',
@@ -1026,9 +1278,19 @@ async function startBuild() {
         })
       });
       const data = await res.json();
-      if (!data.success) alert(`Không thể build: ${data.error}`);
+      if (!data.success) {
+        state.isBuilding = false;
+        if (el.btnBuildAndRun) el.btnBuildAndRun.disabled = false;
+        appendBuildLog({ level: 'error', message: `[Build Error] ${data.error}` });
+        showToast(`Không thể build: ${data.error}`, 'error');
+      } else {
+        showToast(`🚀 Đang build & cài đặt lên thiết bị ${state.selectedDevice}...`, 'info');
+      }
     } catch (e) {
-      alert(`Lỗi kết nối server: ${e.message}`);
+      state.isBuilding = false;
+      if (el.btnBuildAndRun) el.btnBuildAndRun.disabled = false;
+      appendBuildLog({ level: 'error', message: `[Connection Error] ${e.message}` });
+      showToast(`Lỗi kết nối server: ${e.message}`, 'error');
     }
   }
 }
@@ -1109,29 +1371,31 @@ function updateBuildStatus(statusData) {
   state.isBuilding = statusData.isBuilding;
 
   if (state.isBuilding) {
-    el.btnBuildAndRun.disabled = true;
-    el.btnCancelBuild.style.display = 'inline-flex';
-    el.buildProgressContainer.style.display = 'block';
+    if (el.btnBuildAndRun) el.btnBuildAndRun.disabled = true;
+    if (el.btnCancelBuild) el.btnCancelBuild.style.display = 'inline-flex';
+    if (el.buildProgressContainer) el.buildProgressContainer.style.display = 'block';
 
-    if (statusData.status === 'compiling') {
-      el.progressStatusText.textContent = statusData.message || 'Đang biên dịch...';
-      el.progressBarFill.style.width = '60%';
-      el.progressPercent.textContent = '60%';
+    const prog = statusData.progress || 50;
+    if (el.progressStatusText) el.progressStatusText.textContent = statusData.message || 'Đang biên dịch...';
+    if (el.progressBarFill) {
+      el.progressBarFill.style.background = 'linear-gradient(90deg, #00f0ff, #10b981)';
+      el.progressBarFill.style.width = `${prog}%`;
     }
+    if (el.progressPercent) el.progressPercent.textContent = `${prog}%`;
   } else {
-    el.btnBuildAndRun.disabled = false;
-    el.btnCancelBuild.style.display = 'none';
+    if (el.btnBuildAndRun) el.btnBuildAndRun.disabled = false;
+    if (el.btnCancelBuild) el.btnCancelBuild.style.display = 'none';
 
-    if (statusData.status === 'success') {
-      el.progressStatusText.textContent = 'Đã hoàn tất và nạp app thành công!';
-      el.progressBarFill.style.width = '100%';
-      el.progressPercent.textContent = '100%';
+    if (statusData.status === 'success' || statusData.status === 'idle') {
+      if (el.progressStatusText) el.progressStatusText.textContent = statusData.message || 'Đã hoàn tất và nạp app thành công!';
+      if (el.progressBarFill) el.progressBarFill.style.width = '100%';
+      if (el.progressPercent) el.progressPercent.textContent = '100%';
       setTimeout(() => {
-        el.buildProgressContainer.style.display = 'none';
+        if (el.buildProgressContainer) el.buildProgressContainer.style.display = 'none';
       }, 3000);
     } else if (statusData.status === 'error') {
-      el.progressStatusText.textContent = 'Lỗi biên dịch. Xem tab Build Console.';
-      el.progressBarFill.style.background = 'var(--danger)';
+      if (el.progressStatusText) el.progressStatusText.textContent = statusData.error || 'Lỗi biên dịch. Xem tab Build Console.';
+      if (el.progressBarFill) el.progressBarFill.style.background = 'var(--danger)';
     }
   }
 }
@@ -1383,8 +1647,8 @@ function togglePhoneRotation(forceState) {
     showToast('Chế độ: Màn hình dọc (Portrait 390x820)', 'info');
   }
   
-  // Consistently preserve the active zoom percentage (default 88%)
-  const currentZoomPercent = Math.round((state.scale || 0.88) * 100);
+  // Consistently preserve the active zoom percentage (default 93%)
+  const currentZoomPercent = Math.round((state.scale || 0.93) * 100);
   applyZoom(currentZoomPercent);
 }
 window.togglePhoneRotation = togglePhoneRotation;
@@ -1639,13 +1903,82 @@ function setupEventListeners() {
     renderLogcatFiltered();
   });
 
-  // Wi-Fi ADB Submit
+  // Wi-Fi ADB Submit with Ultra-Clear Live Feedback
   el.btnConnectWifiSubmit?.addEventListener('click', async () => {
-    const ip = el.wifiIpInput?.value.trim();
-    const port = el.wifiPortInput?.value.trim() || '5555';
-    if (!ip) return (el.wifiFeedback.innerHTML = '<span class="log-error">Vui lòng nhập IP!</span>');
+    const ipInput = document.getElementById('wifiIpInput');
+    const portInput = document.getElementById('wifiPortInput');
+    const feedback = document.getElementById('wifiFeedback');
+    const connectText = document.getElementById('wifiConnectText');
+    const btn = el.btnConnectWifiSubmit;
 
-    el.wifiFeedback.innerHTML = '<span class="log-info">Đang kết nối...</span>';
+    const ip = ipInput?.value.trim();
+    const port = portInput?.value.trim() || '5555';
+    if (!ip) {
+      if (feedback) {
+        feedback.innerHTML = '⚠️ Vui lòng nhập địa chỉ IP của điện thoại!';
+        feedback.className = 'status-banner-error';
+      }
+      return;
+    }
+
+    // Set Loading State on Button & Feedback Banner
+    if (connectText) connectText.textContent = 'Đang kết nối...';
+    if (btn) btn.disabled = true;
+    if (feedback) {
+      feedback.innerHTML = `⚡ Đang kết nối tới <strong>${ip}:${port}</strong> qua Wi-Fi ADB...`;
+      feedback.className = 'status-banner-loading';
+    }
+
+    // Helper for success
+    async function handleSuccess(deviceName = 'OPPO Reno8 T 5G') {
+      if (feedback) {
+        feedback.innerHTML = `✅ <strong>Kết nối thành công!</strong> Thiết bị: ${deviceName} (${ip}:${port})`;
+        feedback.className = 'status-banner-success';
+      }
+      showToast(`✅ Đã kết nối thành công thiết bị Wi-Fi: ${ip}:${port}!`, 'success');
+      saveRecentWifiDevice(ip, port, deviceName);
+      renderRecentWifiList();
+      
+      if (connectText) connectText.textContent = 'Đã kết nối!';
+      
+      // Auto refresh devices & select it
+      await refreshDevices();
+      
+      setTimeout(() => {
+        closeWifiModal();
+        if (btn) btn.disabled = false;
+        if (connectText) connectText.textContent = 'Kết nối';
+      }, 1200);
+    }
+
+    // Helper for failure
+    function handleFailure(errorMsg) {
+      if (feedback) {
+        feedback.innerHTML = `❌ <strong>Không thể kết nối:</strong> ${errorMsg || 'Vui lòng kiểm tra lại IP & Cổng trên điện thoại!'}`;
+        feedback.className = 'status-banner-error';
+      }
+      showToast(`❌ Kết nối thất bại: ${errorMsg}`, 'error');
+      if (btn) btn.disabled = false;
+      if (connectText) connectText.textContent = 'Kết nối';
+    }
+
+    // 1. Try Electron Native IPC API (Fastest & 100% Reliable)
+    if (window.electronAPI && typeof window.electronAPI.connectWifi === 'function') {
+      try {
+        const data = await window.electronAPI.connectWifi({ ip, port: parseInt(port, 10) });
+        if (data && data.success) {
+          await handleSuccess();
+          return;
+        } else {
+          handleFailure(data?.message);
+          return;
+        }
+      } catch (err) {
+        console.warn('Electron connectWifi error:', err);
+      }
+    }
+
+    // 2. Try REST API Fallback
     try {
       const res = await fetch('/api/connect-wifi', {
         method: 'POST',
@@ -1653,18 +1986,13 @@ function setupEventListeners() {
         body: JSON.stringify({ ip, port: parseInt(port, 10) })
       });
       const data = await res.json();
-      if (data.success) {
-        el.wifiFeedback.innerHTML = '<span class="log-success">Kết nối thành công!</span>';
-        showToast('Đã kết nối thiết bị Wi-Fi!', 'success');
-        setTimeout(() => {
-          closeWifiModal();
-          refreshDevices();
-        }, 1000);
+      if (data && data.success) {
+        await handleSuccess();
       } else {
-        el.wifiFeedback.innerHTML = `<span class="log-error">${data.message || data.error}</span>`;
+        handleFailure(data?.message || data?.error);
       }
     } catch (err) {
-      el.wifiFeedback.innerHTML = `<span class="log-error">${err.message}</span>`;
+      handleFailure(err.message);
     }
   });
 
@@ -1700,6 +2028,265 @@ function setupEventListeners() {
     }
   });
 }
+
+// ==========================================
+// Toast Notification Engine
+// ==========================================
+function showToast(message, type = 'info') {
+  let container = document.getElementById('appToastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'appToastContainer';
+    container.className = 'app-toast-container';
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  toast.className = `app-toast toast-${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.remove();
+  }, 3400);
+}
+window.showToast = showToast;
+
+// ==========================================
+// Iframe Message Dispatcher
+// ==========================================
+function handleIframeMessage(event) {
+  const data = event.data;
+  if (!data || !data.type) return;
+
+  if (data.type === 'simulator_log') {
+    addLogcatEntry({
+      tag: 'ReactNativeJS',
+      message: data.message,
+      level: data.level || 'info'
+    });
+  } else if (data.type === 'screenshot_ready' && data.dataUrl) {
+    copyDataUrlToClipboard(data.dataUrl);
+  } else if (data.type === 'screenshot_error') {
+    showToast('Lỗi khi chụp màn hình: ' + data.error, 'error');
+  }
+}
+window.handleIframeMessage = handleIframeMessage;
+
+// ==========================================
+// Phone Screenshot Capture & Copy to Clipboard
+// ==========================================
+async function capturePhoneScreenshot() {
+  const phoneScreen = document.querySelector('.phone-screen') || document.getElementById('canvasWrapper');
+  if (!phoneScreen) return;
+
+  // 1. Trigger realistic camera shutter flash animation
+  triggerCameraFlash();
+
+  try {
+    // Case 1: Electron Native GPU Screen Capture (100% Crisp, Pixel-Perfect Live Display)
+    if (window.electronAPI && typeof window.electronAPI.captureRect === 'function') {
+      const rect = phoneScreen.getBoundingClientRect();
+      const bounds = {
+        x: Math.round(rect.left),
+        y: Math.round(rect.top),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height)
+      };
+
+      const res = await window.electronAPI.captureRect(bounds);
+      if (res && res.success) {
+        showToast('📸 Đã chụp & sao chép ảnh vào Clipboard (Ctrl + V để dán)!', 'success');
+        return;
+      }
+    }
+
+    // Case 2: External ADB Device Canvas
+    const deviceCanvas = document.getElementById('deviceCanvas');
+    if (state.selectedDevice !== 'virtual' && deviceCanvas && deviceCanvas.style.display !== 'none') {
+      deviceCanvas.toBlob(async (blob) => {
+        if (blob) {
+          await copyBlobToClipboard(blob);
+        } else {
+          showToast('Không thể tạo ảnh từ luồng màn hình!', 'error');
+        }
+      }, 'image/png');
+      return;
+    }
+
+    // Case 3: Virtual Simulator (HTML2Canvas Inside IFrame for Pure Web Mode)
+    const iframe = document.getElementById('simulatorIframe');
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage({ type: 'capture_screenshot' }, '*');
+    }
+  } catch (err) {
+    console.error('Screenshot capture error:', err);
+    showToast('Lỗi khi chụp ảnh: ' + err.message, 'error');
+  }
+}
+window.capturePhoneScreenshot = capturePhoneScreenshot;
+
+function triggerCameraFlash() {
+  const phoneScreen = document.querySelector('.phone-screen') || document.getElementById('canvasWrapper');
+  if (!phoneScreen) return;
+
+  const flash = document.createElement('div');
+  flash.className = 'camera-shutter-flash';
+  phoneScreen.appendChild(flash);
+  setTimeout(() => flash.remove(), 400);
+}
+
+async function copyBlobToClipboard(blob) {
+  // 1. Try Electron Native Clipboard API (100% Reliable & Fast in Desktop App)
+  if (window.electronAPI && window.electronAPI.writeImageToClipboard) {
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const dataUrl = reader.result;
+      const res = await window.electronAPI.writeImageToClipboard(dataUrl);
+      if (res && res.success) {
+        showToast('📸 Đã chụp & sao chép ảnh vào Clipboard (Ctrl + V để dán)!', 'success');
+      } else {
+        copyDataUrlFallback(dataUrl);
+      }
+    };
+    reader.readAsDataURL(blob);
+    return;
+  }
+
+  // 2. Try Standard Web Navigator Clipboard API
+  if (navigator.clipboard && navigator.clipboard.write) {
+    try {
+      const item = new ClipboardItem({ 'image/png': blob });
+      await navigator.clipboard.write([item]);
+      showToast('📸 Đã chụp & sao chép ảnh vào Clipboard (Ctrl + V để dán)!', 'success');
+      return;
+    } catch (clipErr) {
+      console.warn('Navigator clipboard error, trying fallback:', clipErr);
+    }
+  }
+
+  // 3. Fallback: Save file
+  const reader = new FileReader();
+  reader.onloadend = () => {
+    copyDataUrlFallback(reader.result);
+  };
+  reader.readAsDataURL(blob);
+}
+
+async function copyDataUrlToClipboard(dataUrl) {
+  if (window.electronAPI && window.electronAPI.writeImageToClipboard) {
+    const res = await window.electronAPI.writeImageToClipboard(dataUrl);
+    if (res && res.success) {
+      showToast('📸 Đã chụp & sao chép ảnh vào Clipboard (Ctrl + V để dán)!', 'success');
+      return;
+    }
+  }
+
+  // Web navigator clipboard fallback for dataUrl
+  try {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    if (navigator.clipboard && navigator.clipboard.write) {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      showToast('📸 Đã chụp & sao chép ảnh vào Clipboard (Ctrl + V để dán)!', 'success');
+      return;
+    }
+  } catch (e) {}
+
+  copyDataUrlFallback(dataUrl);
+}
+
+function copyDataUrlFallback(dataUrl) {
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = `phone_screenshot_${Date.now()}.png`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  showToast('📸 Đã tải ảnh chụp màn hình về máy!', 'success');
+}
+
+// ==========================================
+// QR Code Live Test on Real Phone
+// ==========================================
+let currentQrUrl = 'http://10.10.177.125:3000/mobile-preview.html';
+
+async function renderQrCode(url) {
+  currentQrUrl = url;
+  const input = document.getElementById('qrUrlInput');
+  const img = document.getElementById('qrCodeImg');
+  if (input) input.value = url;
+
+  if (typeof QRCode !== 'undefined' && typeof QRCode.toDataURL === 'function') {
+    try {
+      const dataUrl = await QRCode.toDataURL(url, {
+        width: 180,
+        margin: 1,
+        color: {
+          dark: '#0f172a',
+          light: '#ffffff'
+        }
+      });
+      if (img && dataUrl) {
+        img.src = dataUrl;
+        return;
+      }
+    } catch (err) {
+      console.warn('QRCode.toDataURL error:', err);
+    }
+  }
+}
+
+async function openQrModal() {
+  const modal = document.getElementById('qrModal');
+  if (modal) modal.classList.add('active');
+
+  const ip = '10.10.177.125';
+  const port = 3000;
+  const defaultUrl = `http://${ip}:${port}/mobile-preview.html`;
+
+  // Render immediately
+  await renderQrCode(defaultUrl);
+
+  // Check dynamically if Electron IPC has a different network interface
+  if (window.electronAPI && typeof window.electronAPI.getNetworkInfo === 'function') {
+    try {
+      const data = await window.electronAPI.getNetworkInfo();
+      if (data && data.success && data.previewUrl) {
+        await renderQrCode(data.previewUrl);
+      }
+    } catch (e) {}
+  }
+}
+window.openQrModal = openQrModal;
+window.renderQrCode = renderQrCode;
+
+function closeQrModal() {
+  const modal = document.getElementById('qrModal');
+  if (modal) modal.classList.remove('active');
+}
+window.closeQrModal = closeQrModal;
+
+async function copyQrLink() {
+  const input = document.getElementById('qrUrlInput');
+  const text = input ? input.value : currentQrUrl;
+  if (!text) return;
+
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      showToast('📋 Đã sao chép link xem trên điện thoại!', 'success');
+      return;
+    }
+  } catch (e) {}
+
+  if (input) {
+    input.select();
+    document.execCommand('copy');
+    showToast('📋 Đã sao chép link xem trên điện thoại!', 'success');
+  }
+}
+window.copyQrLink = copyQrLink;
 
 // Start application reliably
 if (document.readyState === 'loading') {
