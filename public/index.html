@@ -132,8 +132,8 @@
           <div class="header-actions" style="display: flex; align-items: center; gap: 6px;">
             <div class="zoom-controls" style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: var(--text-muted); background: rgba(255,255,255,0.04); padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);">
               <span>Zoom:</span>
-              <input type="range" id="zoomSlider" min="50" max="130" value="93" class="slider-input" oninput="applyZoom(this.value)" style="width: 55px;">
-              <span id="zoomVal" style="font-weight: 800; color: var(--cyan-neon); font-size: 0.72rem;">93%</span>
+              <input type="range" id="zoomSlider" min="50" max="130" value="90" class="slider-input" oninput="applyZoom(this.value)" style="width: 55px;">
+              <span id="zoomVal" style="font-weight: 800; color: var(--cyan-neon); font-size: 0.72rem;">90%</span>
             </div>
 
             <button class="btn btn-outline btn-sm" id="btnQuickDevMenu" onclick="openDevMenu()" title="Mở Dev Menu của React Native">
@@ -212,18 +212,28 @@
 
             <!-- Environment Select & Profile & Tags -->
             <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-              <select id="deviceSelect" class="select-input-sm" style="font-size: 0.72rem; padding: 4px 6px;">
-                <option value="virtual" selected>Máy Ảo Nội Bộ (Standalone)</option>
+              <select id="deviceSelect" class="select-input-sm" onchange="onDeviceChanged(this.value)" style="font-size: 0.72rem; padding: 4px 6px;">
+                <option value="virtual" selected>Máy Ảo Nội Bộ (Standalone Web)</option>
               </select>
-              <button id="btnRefreshDevices" class="icon-btn-sm" onclick="refreshDevices()" title="Quét thiết bị ngoài">
+              <button id="btnRefreshDevices" class="icon-btn-sm" onclick="refreshDevices()" title="Làm mới danh sách thiết bị & máy ảo">
                 <svg class="v-icon text-cyan" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
                   <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
                 </svg>
               </button>
+              <button class="icon-btn-sm" onclick="quickScanThirdPartyEmulators()" title="Tự động quét & kết nối giả lập LDPlayer, Nox, MuMu, WSA">
+                <svg class="v-icon text-emerald" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="22" y1="12" x2="18" y2="12"></line>
+                  <line x1="6" y1="12" x2="2" y2="12"></line>
+                  <line x1="12" y1="6" x2="12" y2="2"></line>
+                  <line x1="12" y1="22" x2="12" y2="18"></line>
+                </svg>
+              </button>
               <select id="colorProfileSelect" class="select-input-sm" onchange="setColorProfile(this.value)" style="font-size: 0.72rem; padding: 4px 6px;">
-                <option value="natural" selected>RGB Chuẩn</option>
-                <option value="vivid">AMOLED Tươi</option>
-                <option value="super-vivid">DCI-P3 Rực Rỡ</option>
+                <option value="natural" selected>Màu Chuẩn 1:1 (Bit-Exact)</option>
+                <option value="vivid">AMOLED Tươi (Vivid P3)</option>
+                <option value="super-vivid">DCI-P3 Siêu Rực Rỡ</option>
+                <option value="oled-hdr">OLED HDR10+ Boost</option>
               </select>
               <span class="tag tag-rn" id="tagRnVersion">RN: v0.87.0</span>
               <span class="tag tag-app" id="tagAppId">com.exampleapp</span>
@@ -270,17 +280,6 @@
             </div>
 
             <div class="console-actions">
-              <!-- Filter for Logcat -->
-              <div class="logcat-filter-group" id="logcatFilters" style="display: none;">
-                <select id="logLevelSelect" class="select-input-sm">
-                  <option value="all">Tất cả Logs</option>
-                  <option value="rn" selected>Chỉ React Native (JS)</option>
-                  <option value="error">Chỉ Lỗi (Error)</option>
-                  <option value="warn">Cảnh báo (Warn)</option>
-                </select>
-                <input type="text" id="logSearchInput" placeholder="Tìm kiếm log..." class="text-input-sm">
-              </div>
-
               <button class="icon-btn-sm" id="btnClearLogs" onclick="clearCurrentLogs()" title="Xóa logs hiện tại" style="display: flex; align-items: center; justify-content: center;">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="3 6 5 6 21 6"></polyline>
@@ -310,6 +309,20 @@
           <div class="console-tab-content">
             <!-- Tab 1: Build Output -->
             <div class="tab-pane active" id="tab-build">
+              <!-- Real-time Live Execution Monitor Widget -->
+              <div id="buildLiveMonitorBar" class="build-live-monitor-bar" style="display: none;">
+                <div class="monitor-status">
+                  <div class="monitor-spinner" id="monitorSpinner"></div>
+                  <div>
+                    <div class="monitor-title" id="monitorStageTitle">Đang biên dịch mã nguồn...</div>
+                    <div style="font-size: 0.68rem; color: var(--text-dim);" id="monitorSubText">Google Pixel 7 (Android 14)</div>
+                  </div>
+                </div>
+                <div class="monitor-meta">
+                  <div><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -1px; margin-right: 3px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg><span class="monitor-timer" id="monitorLiveTimer">00:00</span></div>
+                  <div><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -1px; margin-right: 3px;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg><span class="monitor-percent" id="monitorPercent">10%</span></div>
+                </div>
+              </div>
               <pre class="terminal-body" id="buildConsoleOutput"><span class="log-info">Sẵn sàng. Nhấn "BUILD & RUN APP" để biên dịch và chạy ứng dụng React Native lên máy ảo...</span></pre>
             </div>
 
@@ -320,6 +333,16 @@
 
             <!-- Tab 3: Logcat Output -->
             <div class="tab-pane" id="tab-logcat">
+              <!-- Dedicated Logcat Filter Toolbar (Inside Logcat Tab, so it never shifts top tabs) -->
+              <div class="logcat-filter-toolbar" id="logcatFilters" style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: rgba(0, 0, 0, 0.35); border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
+                <select id="logLevelSelect" class="select-input-sm" style="font-size: 0.72rem; padding: 4px 8px;">
+                  <option value="all">Tất cả Logs</option>
+                  <option value="rn" selected>Chỉ React Native (JS)</option>
+                  <option value="error">Chỉ Lỗi (Error)</option>
+                  <option value="warn">Cảnh báo (Warn)</option>
+                </select>
+                <input type="text" id="logSearchInput" placeholder="Tìm kiếm log Android / React Native..." class="text-input-sm" style="flex: 1; font-size: 0.72rem; padding: 4px 8px;">
+              </div>
               <div class="logcat-stream" id="logcatStreamOutput">
                 <div class="log-line log-info">
                   <span class="log-time">[Hệ thống]</span>

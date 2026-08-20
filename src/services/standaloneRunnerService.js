@@ -185,7 +185,7 @@ class StandaloneRunnerService {
       throw new Error(`Thư mục "${projectPath}" không tồn tại trên ổ đĩa máy tính!`);
     }
 
-    onLog('⚡ Đang phân tích mã nguồn React Native...', 'info');
+    onLog('[Analyze] Đang phân tích mã nguồn React Native...', 'info');
 
     const entryFile = this.findEntryFile(projectPath);
     if (!entryFile) {
@@ -193,7 +193,7 @@ class StandaloneRunnerService {
       throw new Error(`Không tìm thấy file đầu vào (App.tsx / index.js) trong thư mục "${projectPath}"!`);
     }
 
-    onLog(`📁 File đầu vào (Entry): ${entryFile}`, 'info');
+    onLog(`[Entry] File đầu vào (Entry): ${entryFile}`, 'info');
 
     let appName = 'ExampleApp';
     const appJsonPath = path.join(projectPath, 'app.json');
@@ -236,7 +236,7 @@ if (rootTag) {
 
     fs.writeFileSync(tempEntry, wrapperCode, 'utf8');
 
-    onLog('🔨 Đang biên dịch mã nguồn và đóng gói JS Bundle (esbuild)...', 'info');
+    onLog('[Transpile] Đang biên dịch mã nguồn và đóng gói JS Bundle (esbuild)...', 'info');
 
     const rootDir = path.resolve(__dirname, '..', '..');
     const mocksDir = path.join(__dirname, '..', 'mocks');
@@ -293,8 +293,8 @@ if (rootTag) {
       this.currentBundle = result.outputFiles[0].text;
       this.isBuilding = false;
 
-      onLog(`✅ Đóng gói thành công trong ${elapsed}ms (${bundleSizeKb} KB)`, 'success');
-      onLog('🚀 Ứng dụng React Native đã sẵn sàng chạy trên Máy Ảo!', 'success');
+      onLog(`Đóng gói thành công trong ${elapsed}ms (${bundleSizeKb} KB)`, 'success');
+      onLog('Ứng dụng React Native đã sẵn sàng chạy trên Máy Ảo!', 'success');
 
       if (fs.existsSync(tempEntry)) fs.unlinkSync(tempEntry);
 
@@ -307,7 +307,7 @@ if (rootTag) {
     } catch (err) {
       this.isBuilding = false;
       if (fs.existsSync(tempEntry)) fs.unlinkSync(tempEntry);
-      onLog(`❌ Lỗi biên dịch: ${err.message}`, 'error');
+      onLog(`Lỗi biên dịch: ${err.message}`, 'error');
       throw err;
     }
   }

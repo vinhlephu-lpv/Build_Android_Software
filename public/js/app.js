@@ -27,12 +27,21 @@ const state = {
   autoScroll: true,
   streamWs: null,
   logsWs: null,
-  scale: 0.93, // Default 93%
+  scale: 0.90, // Default 90%
   isMouseDown: false,
   touchStart: { x: 0, y: 0, time: 0 },
   activeLogFilter: 'all',
   logSearchQuery: '',
-  allLogcatEntries: []
+  allLogcatEntries: [],
+  // H.264 Streaming State
+  streamMode: 'image',       // 'h264' | 'image'
+  videoDecoder: null,         // WebCodecs VideoDecoder
+  decoderConfigured: false,
+  h264ConfigData: null,       // SPS/PPS config for decoder init
+  pendingFrames: [],          // Frames waiting for decoder config
+  frameCount: 0,
+  fpsDisplay: 0,
+  lastFpsUpdate: 0
 };
 
 // DOM Elements
@@ -130,10 +139,10 @@ async function init() {
   updateClock();
   setInterval(updateClock, 1000);
 
-  // Set default zoom level to 93%
-  applyZoom(93);
+  // Set default zoom level to 90%
+  applyZoom(90);
   if (el.zoomSlider) {
-    el.zoomSlider.value = 93;
+    el.zoomSlider.value = 90;
     el.zoomSlider.addEventListener('input', (e) => applyZoom(parseInt(e.target.value, 10)));
   }
 
@@ -166,11 +175,6 @@ async function init() {
 
   // Setup Event Listeners
   setupEventListeners();
-
-  // Auto trigger initial virtual build so app appears immediately
-  setTimeout(() => {
-    startBuild();
-  }, 500);
 }
 
 function updateClock() {
@@ -207,7 +211,10 @@ function updateBatteryUI(level = 85, isCharging = false) {
 window.updateBatteryUI = updateBatteryUI;
 
 function applyZoom(val) {
-  const numericVal = parseInt(val, 10) || 93;
+  const phoneFrame = el.phoneFrame || document.getElementById('phoneFrame');
+  const isHorizontal = phoneFrame ? (phoneFrame.classList.contains('landscape') || phoneFrame.style.width === '844px' || phoneFrame.style.width === '840px') : false;
+  const defaultVal = 90;
+  const numericVal = parseInt(val, 10) || defaultVal;
   state.scale = numericVal / 100;
   
   const zoomVal = document.getElementById('zoomVal');
@@ -218,15 +225,14 @@ function applyZoom(val) {
     zoomSlider.value = numericVal;
   }
   
-  const phoneFrame = el.phoneFrame || document.getElementById('phoneFrame');
   if (phoneFrame) phoneFrame.style.transform = `scale(${state.scale})`;
 
   const container = el.phoneViewportContainer || document.getElementById('phoneViewportContainer');
   if (container) {
-    const isHorizontal = phoneFrame && (phoneFrame.classList.contains('landscape') || phoneFrame.style.width === '840px');
-    const baseW = isHorizontal ? 840 : 390;
-    const scaledWidth = Math.round(baseW * state.scale + 6);
+    const baseW = isHorizontal ? 844 : 390;
+    const scaledWidth = Math.round(baseW * state.scale + 12);
     container.style.width = `${scaledWidth}px`;
+    container.style.minWidth = `${scaledWidth}px`;
   }
 }
 window.applyZoom = applyZoom;
@@ -236,17 +242,20 @@ function setColorProfile(profile) {
   const select = document.getElementById('colorProfileSelect');
   if (!wrapper) return;
 
-  wrapper.classList.remove('color-vivid', 'color-super-vivid', 'color-natural');
+  wrapper.classList.remove('color-vivid', 'color-super-vivid', 'color-oled-hdr', 'color-natural');
 
-  if (profile === 'super-vivid') {
-    wrapper.classList.add('color-super-vivid');
-    showToast('Chế độ màn hình: DCI-P3 Siêu Rực Rỡ', 'info');
-  } else if (profile === 'natural') {
-    wrapper.classList.add('color-natural');
-    showToast('Chế độ màn hình: RGB Chuẩn (Tự Nhiên)', 'info');
-  } else {
+  if (profile === 'vivid') {
     wrapper.classList.add('color-vivid');
-    showToast('Chế độ màn hình: AMOLED Tươi Sáng', 'info');
+    showToast('Chế độ màu: AMOLED Tươi (Vivid P3)', 'info');
+  } else if (profile === 'super-vivid') {
+    wrapper.classList.add('color-super-vivid');
+    showToast('Chế độ màu: DCI-P3 Siêu Rực Rỡ', 'info');
+  } else if (profile === 'oled-hdr') {
+    wrapper.classList.add('color-oled-hdr');
+    showToast('Chế độ màu: OLED HDR10+ Boost', 'info');
+  } else {
+    wrapper.classList.add('color-natural');
+    showToast('Chế độ màu: Chuẩn 1:1 (Bit-Exact)', 'success');
   }
 
   if (select) select.value = profile;
@@ -273,6 +282,20 @@ function handleIframeMessage(event) {
     return;
   }
 
+  if (data.type === 'set_status_bar_style') {
+    const statusBar = document.querySelector('.android-status-bar');
+    if (statusBar) {
+      if (data.style === 'light-content') {
+        statusBar.classList.add('light-content');
+        statusBar.classList.remove('dark-content');
+      } else {
+        statusBar.classList.add('dark-content');
+        statusBar.classList.remove('light-content');
+      }
+    }
+    return;
+  }
+
   if (data.type !== 'simulator_log') return;
 
   const entry = {
@@ -296,50 +319,284 @@ function handleIframeMessage(event) {
 // ==========================================
 // WebSockets Hub
 // ==========================================
+// ==========================================
+// WebCodecs H.264 Video Decoder
+// ==========================================
+function initVideoDecoder() {
+  if (!('VideoDecoder' in window)) {
+    console.warn('[WebCodecs] not supported, using image mode');
+    return false;
+  }
+
+  try {
+    if (state.videoDecoder) {
+      try { state.videoDecoder.close(); } catch (e) {}
+    }
+
+    state.decoderConfigured = false;
+    state.h264ConfigData = null;
+    state.pendingFrames = [];
+
+    state.videoDecoder = new VideoDecoder({
+      output: (frame) => {
+        // Render decoded frame to canvas
+        const canvas = el.deviceCanvas || document.getElementById('deviceCanvas');
+        if (canvas) {
+          if (canvas.width !== frame.displayWidth || canvas.height !== frame.displayHeight) {
+            canvas.width = frame.displayWidth;
+            canvas.height = frame.displayHeight;
+          }
+          const localCtx = canvas.getContext('2d');
+          localCtx.drawImage(frame, 0, 0);
+        }
+        frame.close();
+
+        // FPS counting
+        state.frameCount++;
+        const now = performance.now();
+        if (now - state.lastFpsUpdate >= 1000) {
+          state.fpsDisplay = state.frameCount;
+          state.frameCount = 0;
+          state.lastFpsUpdate = now;
+          updateFpsDisplay(state.fpsDisplay);
+        }
+      },
+      error: (err) => {
+        console.error('VideoDecoder error:', err);
+      }
+    });
+
+    return true;
+  } catch (err) {
+    console.error('Failed to init VideoDecoder:', err);
+    return false;
+  }
+}
+
+async function configureDecoder(spsppsBuf) {
+  if (!state.videoDecoder || state.videoDecoder.state === 'closed') return;
+
+  const candidateCodecs = [
+    'avc1.640028', // High Profile Level 4.0
+    'avc1.64002a', // High Profile Level 4.2
+    'avc1.4d002a', // Main Profile Level 4.2
+    'avc1.42001f', // Baseline Profile Level 3.1
+    'avc1.42e01f'
+  ];
+
+  let selectedCodec = 'avc1.640028';
+  if ('isConfigSupported' in VideoDecoder) {
+    for (const c of candidateCodecs) {
+      try {
+        const support = await VideoDecoder.isConfigSupported({ codec: c });
+        if (support && support.supported) {
+          selectedCodec = c;
+          break;
+        }
+      } catch (e) {}
+    }
+  }
+
+  try {
+    state.videoDecoder.configure({
+      codec: selectedCodec,
+      optimizeForLatency: true,
+    });
+    state.decoderConfigured = true;
+
+    // Send SPS/PPS in-band if provided
+    if (spsppsBuf && spsppsBuf.byteLength > 0) {
+      try {
+        const configChunk = new EncodedVideoChunk({
+          type: 'key',
+          timestamp: 0,
+          data: spsppsBuf
+        });
+        state.videoDecoder.decode(configChunk);
+      } catch (e) {}
+    }
+
+    // Flush any pending frames
+    for (const pf of state.pendingFrames) {
+      decodeH264Frame(pf.data, pf.isKeyFrame, pf.pts);
+    }
+    state.pendingFrames = [];
+  } catch (err) {
+    console.error('Failed to configure decoder:', err);
+  }
+}
+
+function decodeH264Frame(h264Data, isKeyFrame, pts) {
+  if (!state.videoDecoder || state.videoDecoder.state !== 'configured') {
+    return;
+  }
+
+  try {
+    const chunk = new EncodedVideoChunk({
+      type: isKeyFrame ? 'key' : 'delta',
+      timestamp: pts,
+      data: h264Data
+    });
+    state.videoDecoder.decode(chunk);
+  } catch (err) {
+    // Silent decode error
+  }
+}
+
+function updateFpsDisplay(fps) {
+  let fpsEl = document.getElementById('fpsCounter');
+  if (!fpsEl) {
+    fpsEl = document.createElement('div');
+    fpsEl.id = 'fpsCounter';
+    fpsEl.style.cssText = 'position:absolute;top:8px;right:8px;z-index:9999;background:rgba(0,0,0,0.7);color:#0f0;padding:2px 8px;border-radius:6px;font-size:0.7rem;font-weight:bold;font-family:monospace;pointer-events:none;';
+    const wrapper = document.getElementById('canvasWrapper');
+    if (wrapper) wrapper.appendChild(fpsEl);
+  }
+  if (fpsEl) {
+    fpsEl.textContent = `${fps} FPS`;
+    fpsEl.style.color = fps >= 25 ? '#0f0' : fps >= 10 ? '#ff0' : '#f00';
+    fpsEl.style.display = state.streamMode === 'h264' ? 'block' : 'none';
+  }
+}
+
 function initStreamWebSocket() {
   const wsUrl = getWsUrl('/ws/stream');
 
-  state.streamWs = new WebSocket(wsUrl);
-  state.streamWs.binaryType = 'arraybuffer';
+  try {
+    state.streamWs = new WebSocket(wsUrl);
+    state.streamWs.binaryType = 'arraybuffer';
 
-  state.streamWs.onmessage = (event) => {
-    if (state.selectedDevice === 'virtual') return;
+    state.streamWs.onopen = () => {
+      console.log('[Streamer] Connected to WebSocket:', wsUrl);
+      if (state.selectedDevice && state.selectedDevice !== 'virtual') {
+        state.streamWs.send(JSON.stringify({
+          type: 'start_stream',
+          serial: state.selectedDevice,
+          fps: 60
+        }));
+      }
+    };
 
-    if (typeof event.data === 'string') {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'device_info') updateDeviceInfoDisplay(msg.data);
-      } catch (e) {}
-    } else {
-      const blob = new Blob([event.data], { type: 'image/png' });
-      const img = new Image();
-      const url = URL.createObjectURL(blob);
-      img.onload = () => {
-        el.deviceCanvas.width = img.width;
-        el.deviceCanvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-        URL.revokeObjectURL(url);
-      };
-      img.src = url;
-    }
-  };
+    state.streamWs.onmessage = (event) => {
+      if (state.selectedDevice === 'virtual') return;
 
-  state.streamWs.onclose = () => setTimeout(initStreamWebSocket, 3000);
+      if (typeof event.data === 'string') {
+        // JSON control message
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'device_info') {
+            updateDeviceInfoDisplay(msg.data);
+          } else if (msg.type === 'stream_mode') {
+            state.streamMode = msg.mode;
+            console.log(`[Streamer] Stream mode: ${msg.mode} - ${msg.message}`);
+            if (msg.mode === 'h264') {
+              initVideoDecoder();
+            }
+          }
+        } catch (e) {}
+      } else {
+        // Binary data
+        const arrayBuf = event.data;
+
+        if (state.streamMode === 'h264' && arrayBuf.byteLength > 9) {
+          // H.264 frame: [flags:1][pts:8BE][h264_data]
+          const view = new DataView(arrayBuf);
+          const flags = view.getUint8(0);
+          const isConfig = !!(flags & 1);
+          const isKeyFrame = !!(flags & 2);
+          const ptsHigh = view.getUint32(1);
+          const ptsLow = view.getUint32(5);
+          const pts = ptsHigh * 4294967296 + ptsLow; // BigInt-free for compat
+          const h264Data = new Uint8Array(arrayBuf, 9);
+
+          if (isConfig) {
+            // SPS/PPS config data - configure decoder
+            state.h264ConfigData = h264Data;
+            configureDecoder(h264Data);
+          } else if (state.decoderConfigured) {
+            // Decode video frame
+            decodeH264Frame(h264Data, isKeyFrame, pts);
+          } else {
+            // Queue frame until decoder is configured
+            state.pendingFrames.push({ data: h264Data, isKeyFrame, pts });
+            if (state.pendingFrames.length > 30) state.pendingFrames.shift();
+          }
+        } else {
+          // Legacy PNG/JPEG image frame
+          const blob = new Blob([arrayBuf], { type: 'image/png' });
+          const img = new Image();
+          const url = URL.createObjectURL(blob);
+          img.onload = () => {
+            const canvas = el.deviceCanvas || document.getElementById('deviceCanvas');
+            if (canvas) {
+              if (canvas.width !== img.width || canvas.height !== img.height) {
+                canvas.width = img.width;
+                canvas.height = img.height;
+              }
+              const localCtx = canvas.getContext('2d');
+              localCtx.drawImage(img, 0, 0);
+            }
+            URL.revokeObjectURL(url);
+
+            // FPS counting for legacy mode too
+            state.frameCount++;
+            const now = performance.now();
+            if (now - state.lastFpsUpdate >= 1000) {
+              state.fpsDisplay = state.frameCount;
+              state.frameCount = 0;
+              state.lastFpsUpdate = now;
+            }
+          };
+          img.onerror = () => URL.revokeObjectURL(url);
+          img.src = url;
+        }
+      }
+    };
+
+    state.streamWs.onclose = () => {
+      // Clean up decoder on disconnect
+      if (state.videoDecoder) {
+        try { state.videoDecoder.close(); } catch (e) {}
+        state.videoDecoder = null;
+        state.decoderConfigured = false;
+      }
+      setTimeout(initStreamWebSocket, 3000);
+    };
+  } catch (err) {
+    setTimeout(initStreamWebSocket, 3000);
+  }
 }
 
 function initLogsWebSocket() {
   const wsUrl = getWsUrl('/ws/logs');
 
-  state.logsWs = new WebSocket(wsUrl);
+  try {
+    state.logsWs = new WebSocket(wsUrl);
 
-  state.logsWs.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      handleLogMessage(data);
-    } catch (e) {}
-  };
+    state.logsWs.onopen = () => {
+      console.log('[Logs] Connected to WebSocket:', wsUrl);
+    };
 
-  state.logsWs.onclose = () => setTimeout(initLogsWebSocket, 3000);
+    state.logsWs.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        handleLogMessage(data);
+      } catch (e) {
+        console.error('Logs parse error:', e);
+      }
+    };
+
+    state.logsWs.onerror = (err) => {
+      console.warn('Logs WebSocket error:', err);
+    };
+
+    state.logsWs.onclose = () => {
+      setTimeout(initLogsWebSocket, 2000);
+    };
+  } catch (err) {
+    console.error('Failed to init logs WS:', err);
+    setTimeout(initLogsWebSocket, 2000);
+  }
 }
 
 function handleLogMessage(data) {
@@ -349,8 +606,11 @@ function handleLogMessage(data) {
       break;
 
     case 'build_history':
-      el.buildConsoleOutput.innerHTML = '';
-      data.logs.forEach(entry => appendBuildLog(entry));
+      const buildOut = el.buildConsoleOutput || document.getElementById('buildConsoleOutput');
+      if (buildOut) {
+        buildOut.innerHTML = '';
+        data.logs.forEach(entry => appendBuildLog(entry));
+      }
       break;
 
     case 'build_status':
@@ -366,8 +626,11 @@ function handleLogMessage(data) {
       break;
 
     case 'metro_history':
-      el.metroConsoleOutput.innerHTML = '';
-      data.logs.forEach(entry => appendMetroLog(entry));
+      const metroOut = el.metroConsoleOutput || document.getElementById('metroConsoleOutput');
+      if (metroOut) {
+        metroOut.innerHTML = '';
+        data.logs.forEach(entry => appendMetroLog(entry));
+      }
       break;
 
     case 'logcat_entry':
@@ -404,73 +667,188 @@ async function fetchSystemStatus() {
 
 async function refreshDevices() {
   try {
+    // 1. Fetch connected ADB devices
     const res = await fetch('/api/devices');
     const data = await res.json();
     state.devices = data.devices || [];
 
+    // 2. Fetch configured AVD emulators
+    let avds = [];
+    try {
+      const avdRes = await fetch('/api/emulator/list');
+      const avdData = await avdRes.json();
+      avds = avdData.avds || [];
+    } catch (e) {}
+
     const previousSelected = state.selectedDevice;
     el.deviceSelect.innerHTML = '';
 
-    // Primary: Virtual Standalone Simulator
+    // Group 1: Standalone Web Simulator
+    const optGroupWeb = document.createElement('optgroup');
+    optGroupWeb.label = 'Trình giả lập nội bộ (Zero Setup)';
     const optVirtual = document.createElement('option');
     optVirtual.value = 'virtual';
-    optVirtual.textContent = 'Máy Ảo Nội Bộ (Standalone)';
+    optVirtual.textContent = 'Máy Ảo Nội Bộ (Standalone Web)';
     if (previousSelected === 'virtual') optVirtual.selected = true;
-    el.deviceSelect.appendChild(optVirtual);
+    optGroupWeb.appendChild(optVirtual);
+    el.deviceSelect.appendChild(optGroupWeb);
 
-    // Optional: External connected ADB devices
+    // Group 2: Connected ADB Devices & Running Emulators (100% Native Build)
+    const optGroupConnected = document.createElement('optgroup');
+    optGroupConnected.label = 'Thiết bị & Máy ảo đang chạy (100% Native Gradle)';
+    
+    let hasRunningNative = false;
     state.devices.forEach(d => {
+      hasRunningNative = true;
       const opt = document.createElement('option');
       opt.value = d.serial;
-      opt.textContent = `${d.model} (${d.serial})`;
+      const isEmu = d.isEmulator || d.serial.startsWith('emulator-') || d.serial.includes('127.0.0.1');
+      opt.textContent = isEmu ? `[Emulator] ${d.model} (${d.serial})` : `[Device] ${d.model} (${d.serial})`;
       if (d.serial === previousSelected) opt.selected = true;
-      el.deviceSelect.appendChild(opt);
+      optGroupConnected.appendChild(opt);
     });
 
-    if (state.selectedDevice === 'virtual') {
-      if (el.runnerModeText) el.runnerModeText.textContent = 'Máy Ảo Độc Lập';
-      if (el.deviceStatusDot) el.deviceStatusDot.className = 'status-dot active';
-      if (el.deviceStatusText) el.deviceStatusText.textContent = 'Sẵn sàng chạy';
-    } else {
-      const current = state.devices.find(d => d.serial === state.selectedDevice);
-      if (current) {
-        if (el.runnerModeText) el.runnerModeText.textContent = 'Thiết bị ngoài';
-        if (el.deviceStatusDot) el.deviceStatusDot.className = current.isOnline ? 'status-dot active' : 'status-dot warning';
-        if (el.deviceStatusText) el.deviceStatusText.textContent = current.model;
-      }
+    if (hasRunningNative) {
+      el.deviceSelect.appendChild(optGroupConnected);
     }
-  } catch (e) {}
+
+    // Group 3: Offline AVDs (Can be started with 1 click)
+    const offlineAvds = avds.filter(a => !a.isRunning);
+    if (offlineAvds.length > 0) {
+      const optGroupAvd = document.createElement('optgroup');
+      optGroupAvd.label = 'Máy ảo có sẵn (Bấm để khởi động)';
+      offlineAvds.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = `start_avd:${a.name}`;
+        opt.textContent = `Khởi động ${a.displayName || a.name} (Android 14)`;
+        optGroupAvd.appendChild(opt);
+      });
+      el.deviceSelect.appendChild(optGroupAvd);
+    }
+
+    // Preserve user selection and only fallback if selected physical device disconnected
+    const onlineEmu = state.devices.find(d => d.isEmulator || d.serial.startsWith('emulator-'));
+    
+    if (!state.selectedDevice) {
+      if (onlineEmu) {
+        state.selectedDevice = onlineEmu.serial;
+        el.deviceSelect.value = onlineEmu.serial;
+        onDeviceChanged(onlineEmu.serial);
+      } else {
+        state.selectedDevice = 'virtual';
+        el.deviceSelect.value = 'virtual';
+        onDeviceChanged('virtual');
+      }
+    } else if (state.selectedDevice !== 'virtual' && !state.devices.some(d => d.serial === state.selectedDevice)) {
+      // The previously selected device was disconnected -> fallback to virtual
+      state.selectedDevice = 'virtual';
+      el.deviceSelect.value = 'virtual';
+      onDeviceChanged('virtual');
+    } else {
+      // Keep current selection intact
+      el.deviceSelect.value = state.selectedDevice;
+    }
+
+    updateDeviceStateUI();
+  } catch (e) {
+    console.warn('refreshDevices error:', e);
+  }
 }
 
-function onDeviceChanged(serial) {
-  state.selectedDevice = serial;
-
-  if (serial === 'virtual') {
-    if (el.simulatorIframe) el.simulatorIframe.style.display = 'block';
-    if (el.deviceCanvas) el.deviceCanvas.style.display = 'none';
+function updateDeviceStateUI() {
+  if (state.selectedDevice === 'virtual') {
     if (el.runnerModeText) el.runnerModeText.textContent = 'Máy Ảo Độc Lập';
     if (el.deviceStatusDot) el.deviceStatusDot.className = 'status-dot active';
     if (el.deviceStatusText) el.deviceStatusText.textContent = 'Sẵn sàng chạy';
+    if (el.buildStatusSubtitle) el.buildStatusSubtitle.textContent = '& RUN';
+  } else {
+    const current = state.devices.find(d => d.serial === state.selectedDevice);
+    if (current) {
+      const isEmu = current.isEmulator || current.serial.startsWith('emulator-') || current.serial.includes('127.0.0.1');
+      if (el.runnerModeText) el.runnerModeText.textContent = isEmu ? 'Máy Ảo Native' : 'Thiết bị thật';
+      if (el.deviceStatusDot) el.deviceStatusDot.className = current.isOnline ? 'status-dot active' : 'status-dot warning';
+      if (el.deviceStatusText) el.deviceStatusText.textContent = current.model;
+      if (el.buildStatusSubtitle) el.buildStatusSubtitle.textContent = 'NATIVE';
+    }
+  }
+}
 
-    if (el.infoDeviceModel) el.infoDeviceModel.textContent = 'Máy Ảo Nội Bộ (Standalone)';
+async function onDeviceChanged(val) {
+  if (val.startsWith('start_avd:')) {
+    const avdName = val.replace('start_avd:', '');
+    showToast(`Đang khởi động máy ảo Android: ${avdName}...`, 'info');
+    switchTab('tab-build');
+    
+    try {
+      const res = await fetch('/api/emulator/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avdName })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Máy ảo ${avdName} đã sẵn sàng!`, 'success');
+        await refreshDevices();
+        if (data.serial) {
+          state.selectedDevice = data.serial;
+          el.deviceSelect.value = data.serial;
+          onDeviceChanged(data.serial);
+        }
+      } else {
+        showToast(`Không thể bật máy ảo: ${data.error}`, 'error');
+        el.deviceSelect.value = 'virtual';
+        onDeviceChanged('virtual');
+      }
+    } catch (err) {
+      showToast(`Lỗi kết nối: ${err.message}`, 'error');
+      el.deviceSelect.value = 'virtual';
+      onDeviceChanged('virtual');
+    }
+    return;
+  }
+
+  state.selectedDevice = val;
+  updateDeviceStateUI();
+
+  const mockStatusBar = document.querySelector('.android-status-bar');
+
+  if (val === 'virtual') {
+    if (mockStatusBar) mockStatusBar.style.display = 'flex';
+    if (el.simulatorIframe) el.simulatorIframe.style.display = 'block';
+    if (el.deviceCanvas) el.deviceCanvas.style.display = 'none';
+
+    if (state.streamWs && state.streamWs.readyState === 1) {
+      state.streamWs.send(JSON.stringify({ type: 'stop_stream' }));
+    }
+
+    if (el.infoDeviceModel) el.infoDeviceModel.textContent = 'Máy Ảo Nội Bộ (Standalone Web)';
     if (el.infoAndroidVer) el.infoAndroidVer.textContent = 'Android 14 (API 34)';
     if (el.infoResolution) el.infoResolution.textContent = '1080 x 2400 px (360x740 CSS)';
     if (el.infoDpi) el.infoDpi.textContent = '420 DPI (x3.0)';
     if (el.infoBattery) el.infoBattery.textContent = 'Không cần Android Studio';
     if (el.infoSerial) el.infoSerial.textContent = 'esbuild Fast Engine';
   } else {
-    // For real device: keep simulator preview visible so phone frame is never blank!
-    if (el.simulatorIframe) el.simulatorIframe.style.display = 'block';
-    if (el.runnerModeText) el.runnerModeText.textContent = 'Thiết bị ADB ngoài';
+    // Mode: Real ADB Native Device / Android Emulator Screen Mirroring
+    if (mockStatusBar) mockStatusBar.style.display = 'none';
+    if (el.simulatorIframe) el.simulatorIframe.style.display = 'none';
+    if (el.deviceCanvas) el.deviceCanvas.style.display = 'block';
+
+    if (state.streamWs && state.streamWs.readyState === 1) {
+      state.streamWs.send(JSON.stringify({
+        type: 'start_stream',
+        serial: val,
+        fps: 60
+      }));
+    }
 
     if (state.logsWs && state.logsWs.readyState === 1) {
       state.logsWs.send(JSON.stringify({
         type: 'start_logcat',
-        serial
+        serial: val
       }));
     }
 
-    fetch(`/api/device-info?serial=${encodeURIComponent(serial)}`)
+    fetch(`/api/device-info?serial=${encodeURIComponent(val)}`)
       .then(res => res.json())
       .then(data => {
         if (data.success && data.info) updateDeviceInfoDisplay(data.info);
@@ -478,6 +856,24 @@ function onDeviceChanged(serial) {
       .catch(() => {});
   }
 }
+window.onDeviceChanged = onDeviceChanged;
+
+async function quickScanThirdPartyEmulators() {
+  showToast('Đang quét các cổng giả lập LDPlayer / Nox / MuMu / WSA...', 'info');
+  try {
+    const res = await fetch('/api/emulator/scan-third-party', { method: 'POST' });
+    const data = await res.json();
+    if (data.success && data.results && data.results.length > 0) {
+      showToast(`Đã tìm thấy & kết nối ${data.results.length} giả lập!`, 'success');
+      await refreshDevices();
+    } else {
+      showToast('Không tìm thấy giả lập bên ngoài nào đang mở cổng ADB.', 'info');
+    }
+  } catch (e) {
+    showToast('Lỗi khi quét giả lập: ' + e.message, 'error');
+  }
+}
+window.quickScanThirdPartyEmulators = quickScanThirdPartyEmulators;
 
 function updateDeviceInfoDisplay(info) {
   if (!info) return;
@@ -657,7 +1053,7 @@ function selectRecentWifi(ip, port) {
   const portInput = document.getElementById('wifiPortInput');
   if (ipInput) ipInput.value = ip;
   if (portInput) portInput.value = port;
-  showToast(`📋 Đã điền ${ip}:${port}`, 'info');
+  showToast(`Đã điền ${ip}:${port}`, 'info');
 }
 window.selectRecentWifi = selectRecentWifi;
 
@@ -702,7 +1098,7 @@ async function submitWifiConnect() {
 
   if (!ip) {
     if (feedback) {
-      feedback.innerHTML = '⚠️ Vui lòng nhập địa chỉ IP của điện thoại!';
+      feedback.innerHTML = 'Vui lòng nhập địa chỉ IP của điện thoại!';
       feedback.className = 'status-banner-error';
     }
     return;
@@ -712,17 +1108,17 @@ async function submitWifiConnect() {
   if (connectText) connectText.textContent = 'Đang kết nối...';
   if (btn) btn.disabled = true;
   if (feedback) {
-    feedback.innerHTML = `⚡ Đang kết nối tới <strong>${ip}:${port}</strong>...`;
+    feedback.innerHTML = `Đang kết nối tới <strong>${ip}:${port}</strong>...`;
     feedback.className = 'status-banner-loading';
   }
 
   async function handleSuccess(deviceName = 'OPPO Reno8 T 5G') {
     const serial = `${ip}:${port}`;
     if (feedback) {
-      feedback.innerHTML = `✅ <strong>Kết nối thành công!</strong> Thiết bị: ${deviceName} (${serial})`;
+      feedback.innerHTML = `<strong>Kết nối thành công!</strong> Thiết bị: ${deviceName} (${serial})`;
       feedback.className = 'status-banner-success';
     }
-    showToast(`✅ Đã kết nối thiết bị Wi-Fi: ${serial}!`, 'success');
+    showToast(`Đã kết nối thiết bị Wi-Fi: ${serial}!`, 'success');
     saveRecentWifiDevice(ip, port, deviceName);
     renderRecentWifiList();
 
@@ -746,10 +1142,10 @@ async function submitWifiConnect() {
 
   function handleFailure(errorMsg) {
     if (feedback) {
-      feedback.innerHTML = `❌ <strong>Không thể kết nối:</strong> ${errorMsg || 'Vui lòng kiểm tra lại IP & Cổng trên điện thoại!'}`;
+      feedback.innerHTML = `<strong>Không thể kết nối:</strong> ${errorMsg || 'Vui lòng kiểm tra lại IP & Cổng trên điện thoại!'}`;
       feedback.className = 'status-banner-error';
     }
-    showToast(`❌ Kết nối thất bại: ${errorMsg}`, 'error');
+    showToast(`Kết nối thất bại: ${errorMsg}`, 'error');
     if (btn) btn.disabled = false;
     if (connectText) connectText.textContent = 'Kết nối';
   }
@@ -1033,9 +1429,10 @@ async function startBuild() {
   const projectPath = (el.inputProjectPath ? el.inputProjectPath.value.trim() : '') || state.projectPath;
 
   switchTab('tab-build');
+  startBuildLiveTimer();
 
   const out = el.buildConsoleOutput || document.getElementById('buildConsoleOutput');
-  if (out && out.textContent.includes('Sẵn sàng.')) {
+  if (out) {
     out.innerHTML = '';
   }
 
@@ -1234,37 +1631,37 @@ async function startBuild() {
       showToast(`Lỗi kết nối: ${err.message}`, 'error');
     }
   } else {
-    // Mode 2: Real Android Device Build & Run (Gradle + ADB Install + Auto Launch)
+    // Mode 2: Real Android Device / Emulator Native Build (Gradle + ADB + Live Stream)
     state.isBuilding = true;
+    switchTab('tab-build');
+    startBuildLiveTimer();
+
+    const buildConsoleOut = el.buildConsoleOutput || document.getElementById('buildConsoleOutput');
+    if (buildConsoleOut) {
+      buildConsoleOut.innerHTML = '';
+    }
+
     if (el.btnBuildAndRun) el.btnBuildAndRun.disabled = true;
     if (el.buildProgressContainer) el.buildProgressContainer.style.display = 'block';
-    if (el.progressStatusText) el.progressStatusText.textContent = `Đang kết nối & biên dịch lên thiết bị thật (${state.selectedDevice})...`;
-    if (el.progressBarFill) el.progressBarFill.style.width = '25%';
-    if (el.progressPercent) el.progressPercent.textContent = '25%';
+    if (el.progressStatusText) el.progressStatusText.textContent = `Đang nạp lệnh biên dịch lên ${state.selectedDevice}...`;
+    if (el.progressBarFill) el.progressBarFill.style.width = '15%';
+    if (el.progressPercent) el.progressPercent.textContent = '15%';
 
     appendBuildLog({
-      level: 'info',
-      message: '========================================================================'
+      level: 'header',
+      message: `========================================================================`
+    });
+    appendBuildLog({
+      level: 'header',
+      message: `[Pipeline] TIẾN TRÌNH BIÊN DỊCH NATIVE: ${state.selectedDevice}`
     });
     appendBuildLog({
       level: 'info',
-      message: `[Pipeline] BẮT ĐẦU BIÊN DỊCH & CÀI ĐẶT LÊN THIẾT BỊ THẬT: ${state.selectedDevice}`
+      message: `[Project] Dự án: ${projectPath}`
     });
     appendBuildLog({
-      level: 'info',
-      message: `[Project] Thư mục dự án: ${projectPath}`
-    });
-    appendBuildLog({
-      level: 'info',
-      message: `[Device] ${state.selectedDevice} (Android Physical Device)`
-    });
-    appendBuildLog({
-      level: 'info',
-      message: `[Engine] Android Gradle Build Pipeline (assembleDebug)`
-    });
-    appendBuildLog({
-      level: 'info',
-      message: '========================================================================'
+      level: 'step',
+      message: `[BƯỚC 1/6] Đang kết nối máy ảo và nạp lệnh biên dịch Gradle...`
     });
 
     try {
@@ -1280,14 +1677,16 @@ async function startBuild() {
       const data = await res.json();
       if (!data.success) {
         state.isBuilding = false;
+        stopBuildLiveTimer();
         if (el.btnBuildAndRun) el.btnBuildAndRun.disabled = false;
         appendBuildLog({ level: 'error', message: `[Build Error] ${data.error}` });
         showToast(`Không thể build: ${data.error}`, 'error');
       } else {
-        showToast(`🚀 Đang build & cài đặt lên thiết bị ${state.selectedDevice}...`, 'info');
+        showToast(`Đang build & cài đặt lên thiết bị ${state.selectedDevice}...`, 'info');
       }
     } catch (e) {
       state.isBuilding = false;
+      stopBuildLiveTimer();
       if (el.btnBuildAndRun) el.btnBuildAndRun.disabled = false;
       appendBuildLog({ level: 'error', message: `[Connection Error] ${e.message}` });
       showToast(`Lỗi kết nối server: ${e.message}`, 'error');
@@ -1367,22 +1766,83 @@ async function sendKey(keycode) {
   } catch (e) {}
 }
 
+let buildTimerInterval = null;
+let buildStartTime = null;
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function startBuildLiveTimer() {
+  stopBuildLiveTimer();
+  buildStartTime = Date.now();
+  
+  const timerSpan = document.getElementById('monitorLiveTimer');
+  if (timerSpan) timerSpan.textContent = '00:00';
+
+  const monitorBar = document.getElementById('buildLiveMonitorBar');
+  if (monitorBar) monitorBar.style.display = 'flex';
+
+  buildTimerInterval = setInterval(() => {
+    if (!buildStartTime) return;
+    const elapsedSec = Math.floor((Date.now() - buildStartTime) / 1000);
+    const mm = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+    const ss = String(elapsedSec % 60).padStart(2, '0');
+    const timerSpan = document.getElementById('monitorLiveTimer');
+    if (timerSpan) timerSpan.textContent = `${mm}:${ss}`;
+  }, 400);
+}
+
+function stopBuildLiveTimer() {
+  if (buildTimerInterval) {
+    clearInterval(buildTimerInterval);
+    buildTimerInterval = null;
+  }
+}
+
 function updateBuildStatus(statusData) {
   state.isBuilding = statusData.isBuilding;
+
+  const monitorBar = document.getElementById('buildLiveMonitorBar');
+  const monitorSpinner = document.getElementById('monitorSpinner');
+  const monitorStageTitle = document.getElementById('monitorStageTitle');
+  const monitorSubText = document.getElementById('monitorSubText');
+  const monitorPercent = document.getElementById('monitorPercent');
 
   if (state.isBuilding) {
     if (el.btnBuildAndRun) el.btnBuildAndRun.disabled = true;
     if (el.btnCancelBuild) el.btnCancelBuild.style.display = 'inline-flex';
     if (el.buildProgressContainer) el.buildProgressContainer.style.display = 'block';
 
-    const prog = statusData.progress || 50;
-    if (el.progressStatusText) el.progressStatusText.textContent = statusData.message || 'Đang biên dịch...';
+    const prog = statusData.progress || 35;
+    const msg = statusData.message || 'Đang biên dịch React Native...';
+
+    if (el.progressStatusText) el.progressStatusText.textContent = msg;
     if (el.progressBarFill) {
       el.progressBarFill.style.background = 'linear-gradient(90deg, #00f0ff, #10b981)';
       el.progressBarFill.style.width = `${prog}%`;
     }
     if (el.progressPercent) el.progressPercent.textContent = `${prog}%`;
+
+    if (monitorBar) monitorBar.style.display = 'flex';
+    if (monitorSpinner) {
+      monitorSpinner.style.display = 'block';
+      monitorSpinner.style.borderTopColor = '#00f0ff';
+    }
+    if (monitorStageTitle) monitorStageTitle.textContent = msg;
+    if (monitorSubText) {
+      const devName = state.selectedDevice === 'virtual' ? 'Máy Ảo Nội Bộ (Standalone Web)' : `Google Pixel 7 (${state.selectedDevice})`;
+      monitorSubText.textContent = `Target: ${devName}`;
+    }
+    if (monitorPercent) monitorPercent.textContent = `${prog}%`;
   } else {
+    stopBuildLiveTimer();
     if (el.btnBuildAndRun) el.btnBuildAndRun.disabled = false;
     if (el.btnCancelBuild) el.btnCancelBuild.style.display = 'none';
 
@@ -1390,12 +1850,22 @@ function updateBuildStatus(statusData) {
       if (el.progressStatusText) el.progressStatusText.textContent = statusData.message || 'Đã hoàn tất và nạp app thành công!';
       if (el.progressBarFill) el.progressBarFill.style.width = '100%';
       if (el.progressPercent) el.progressPercent.textContent = '100%';
+
+      if (monitorSpinner) monitorSpinner.style.display = 'none';
+      if (monitorStageTitle) monitorStageTitle.innerHTML = '<span style="color: #10b981; font-weight: 700;">Biên dịch & Chạy thành công!</span>';
+      if (monitorPercent) monitorPercent.textContent = '100%';
+
       setTimeout(() => {
         if (el.buildProgressContainer) el.buildProgressContainer.style.display = 'none';
-      }, 3000);
+        if (monitorBar && !state.isBuilding) monitorBar.style.display = 'none';
+      }, 5000);
     } else if (statusData.status === 'error') {
       if (el.progressStatusText) el.progressStatusText.textContent = statusData.error || 'Lỗi biên dịch. Xem tab Build Console.';
       if (el.progressBarFill) el.progressBarFill.style.background = 'var(--danger)';
+
+      if (monitorSpinner) monitorSpinner.style.display = 'none';
+      if (monitorStageTitle) monitorStageTitle.innerHTML = '<span style="color: #f43f5e; font-weight: 700;">Lỗi biên dịch!</span>';
+      if (monitorPercent) monitorPercent.textContent = 'Lỗi';
     }
   }
 }
@@ -1470,16 +1940,39 @@ function scrollActiveTabToBottom() {
 window.scrollActiveTabToBottom = scrollActiveTabToBottom;
 
 function appendBuildLog(entry) {
-  const line = document.createElement('div');
-  line.className = `log-${entry.level || 'info'}`;
-  const time = entry.timestamp ? `[${entry.timestamp}] ` : '';
-  line.textContent = `${time}${entry.message}`;
-  
   const out = el.buildConsoleOutput || document.getElementById('buildConsoleOutput');
-  if (out) {
-    out.appendChild(line);
-    scrollToBottom(out);
+  if (!out) return;
+
+  const line = document.createElement('div');
+  const level = entry.level || 'info';
+  const msg = entry.message || '';
+  const time = entry.timestamp ? `[${entry.timestamp}] ` : '';
+
+  if (level === 'header') {
+    line.className = 'build-log-header';
+    line.textContent = msg;
+  } else if (level === 'step') {
+    line.className = 'build-log-step';
+    line.innerHTML = `<span class="step-badge">${time}</span><span>${escapeHtml(msg)}</span>`;
+  } else if (level === 'task') {
+    line.className = 'build-log-task';
+    line.innerHTML = `<span class="task-icon"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#00f0ff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></span><span class="task-text">${escapeHtml(msg)}</span>`;
+  } else if (level === 'success') {
+    line.className = 'build-log-success';
+    line.innerHTML = `<span class="success-icon"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#10b981" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span><span>${escapeHtml(msg)}</span>`;
+  } else if (level === 'error') {
+    line.className = 'build-log-error';
+    line.innerHTML = `<span class="error-icon"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#f43f5e" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span><span>${escapeHtml(msg)}</span>`;
+  } else if (level === 'warn') {
+    line.className = 'build-log-warn';
+    line.innerHTML = `<span class="warn-icon"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#f59e0b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></span><span>${escapeHtml(msg)}</span>`;
+  } else {
+    line.className = `build-log-line log-${level}`;
+    line.textContent = `${time}${msg}`;
   }
+
+  out.appendChild(line);
+  scrollToBottom(out);
 }
 
 function appendMetroLog(entry) {
@@ -1558,8 +2051,271 @@ function createLogcatRow(entry) {
 }
 
 // ==========================================
-// Setup All Event Listeners
+// Canvas Touch, Swipe & Scroll Interaction (for ADB device / emulator)
 // ==========================================
+function setupCanvasInteraction() {
+  const canvas = el.deviceCanvas || document.getElementById('deviceCanvas');
+  const wrapper = el.canvasWrapper || document.getElementById('canvasWrapper');
+  const interactiveTarget = wrapper || canvas;
+
+  if (!interactiveTarget) return;
+
+  let startX = 0;
+  let startY = 0;
+  let lastMoveX = 0;
+  let lastMoveY = 0;
+  let startTime = 0;
+  let isDown = false;
+  let hasMoved = false;
+  const useScrcpy = () => state.streamMode === 'h264';
+
+  // Get coordinates relative to device screen
+  function getCoords(e) {
+    const targetCanvas = el.deviceCanvas || document.getElementById('deviceCanvas');
+    const rect = (targetCanvas || interactiveTarget).getBoundingClientRect();
+    // Use device info dimensions for accurate mapping
+    const cw = (state.deviceInfo && state.deviceInfo.width) ? state.deviceInfo.width :
+               (targetCanvas && targetCanvas.width) ? targetCanvas.width : 1080;
+    const ch = (state.deviceInfo && state.deviceInfo.height) ? state.deviceInfo.height :
+               (targetCanvas && targetCanvas.height) ? targetCanvas.height : 2400;
+
+    const clientX = e.clientX !== undefined ? e.clientX : (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : 0);
+    const clientY = e.clientY !== undefined ? e.clientY : (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientY : 0);
+
+    const relX = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const relY = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+
+    return {
+      x: Math.round(relX * cw),
+      y: Math.round(relY * ch),
+      rawX: clientX - rect.left,
+      rawY: clientY - rect.top
+    };
+  }
+
+  // === POINTER DOWN ===
+  const onPointerDown = (e) => {
+    if (state.selectedDevice === 'virtual') return;
+    e.preventDefault();
+    isDown = true;
+    hasMoved = false;
+    const coords = getCoords(e);
+    startX = coords.x;
+    startY = coords.y;
+    lastMoveX = coords.x;
+    lastMoveY = coords.y;
+    startTime = Date.now();
+
+    // Show touch ripple
+    if (el.touchRipple) {
+      el.touchRipple.style.left = `${coords.rawX}px`;
+      el.touchRipple.style.top = `${coords.rawY}px`;
+      el.touchRipple.classList.remove('active');
+      void el.touchRipple.offsetWidth;
+      el.touchRipple.classList.add('active');
+    }
+
+    // In scrcpy mode: send real-time touch_down
+    if (useScrcpy() && state.streamWs && state.streamWs.readyState === 1) {
+      state.streamWs.send(JSON.stringify({
+        type: 'touch_down',
+        serial: state.selectedDevice,
+        x: coords.x,
+        y: coords.y
+      }));
+    }
+  };
+
+  // === POINTER MOVE (continuous for smooth scrolling/dragging) ===
+  const onPointerMove = (e) => {
+    if (!isDown || state.selectedDevice === 'virtual') return;
+    const coords = getCoords(e);
+    const dist = Math.hypot(coords.x - lastMoveX, coords.y - lastMoveY);
+
+    // Only send move if distance is significant (prevents flooding)
+    if (dist < 5) return;
+    hasMoved = true;
+    lastMoveX = coords.x;
+    lastMoveY = coords.y;
+
+    // Update ripple position
+    if (el.touchRipple) {
+      el.touchRipple.style.left = `${coords.rawX}px`;
+      el.touchRipple.style.top = `${coords.rawY}px`;
+    }
+
+    // In scrcpy mode: send real-time touch_move for smooth dragging
+    if (useScrcpy() && state.streamWs && state.streamWs.readyState === 1) {
+      state.streamWs.send(JSON.stringify({
+        type: 'touch_move',
+        serial: state.selectedDevice,
+        x: coords.x,
+        y: coords.y
+      }));
+    }
+  };
+
+  // === POINTER UP ===
+  const onPointerUp = (e) => {
+    if (!isDown || state.selectedDevice === 'virtual') return;
+    isDown = false;
+    const coords = getCoords(e);
+    const endX = coords.x;
+    const endY = coords.y;
+    const duration = Math.min(Math.max(Date.now() - startTime, 50), 800);
+    const dist = Math.hypot(endX - startX, endY - startY);
+
+    if (useScrcpy() && state.streamWs && state.streamWs.readyState === 1) {
+      // scrcpy mode: send touch_up (server handles the full gesture)
+      state.streamWs.send(JSON.stringify({
+        type: 'touch_up',
+        serial: state.selectedDevice,
+        x: endX,
+        y: endY
+      }));
+    } else {
+      // Legacy mode: send complete tap or swipe
+      if (dist < 30) {
+        sendDeviceTap(startX, startY);
+      } else {
+        sendDeviceSwipe(startX, startY, endX, endY, duration);
+      }
+    }
+  };
+
+  // === SCROLL (wheel) for smooth scrolling ===
+  const onWheel = (e) => {
+    if (state.selectedDevice === 'virtual') return;
+    e.preventDefault();
+    const coords = getCoords(e);
+
+    // Normalize scroll delta
+    const scrollV = e.deltaY > 0 ? -1 : e.deltaY < 0 ? 1 : 0;
+    const scrollH = e.deltaX > 0 ? 1 : e.deltaX < 0 ? -1 : 0;
+
+    if (state.streamWs && state.streamWs.readyState === 1) {
+      state.streamWs.send(JSON.stringify({
+        type: 'scroll',
+        serial: state.selectedDevice,
+        x: coords.x,
+        y: coords.y,
+        scrollH,
+        scrollV
+      }));
+    }
+  };
+
+  // Register events on interactive target
+  interactiveTarget.addEventListener('pointerdown', onPointerDown);
+  interactiveTarget.addEventListener('pointermove', onPointerMove);
+  interactiveTarget.addEventListener('pointerup', onPointerUp);
+  interactiveTarget.addEventListener('pointercancel', onPointerUp);
+  interactiveTarget.addEventListener('wheel', onWheel, { passive: false });
+
+  // Prevent context menu on right-click
+  interactiveTarget.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  // Capture pointer to track moves outside the element
+  interactiveTarget.addEventListener('pointerdown', (e) => {
+    if (state.selectedDevice !== 'virtual') {
+      interactiveTarget.setPointerCapture(e.pointerId);
+    }
+  });
+}
+
+function sendDeviceTap(x, y) {
+  if (state.selectedDevice === 'virtual') return;
+  console.log('[Input] Tap target:', state.selectedDevice, 'x:', Math.round(x), 'y:', Math.round(y));
+
+  if (state.streamWs && state.streamWs.readyState === 1) {
+    state.streamWs.send(JSON.stringify({
+      type: 'tap',
+      serial: state.selectedDevice,
+      x: Math.round(x),
+      y: Math.round(y)
+    }));
+  } else {
+    fetch('/api/device/tap', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serial: state.selectedDevice, x: Math.round(x), y: Math.round(y) })
+    }).catch(() => {});
+  }
+}
+window.sendDeviceTap = sendDeviceTap;
+
+function sendDeviceSwipe(x1, y1, x2, y2, duration = 200) {
+  if (state.selectedDevice === 'virtual') return;
+  console.log('[Input] Swipe target:', state.selectedDevice, 'from:', Math.round(x1), Math.round(y1), 'to:', Math.round(x2), Math.round(y2));
+
+  if (state.streamWs && state.streamWs.readyState === 1) {
+    state.streamWs.send(JSON.stringify({
+      type: 'swipe',
+      serial: state.selectedDevice,
+      x1: Math.round(x1),
+      y1: Math.round(y1),
+      x2: Math.round(x2),
+      y2: Math.round(y2),
+      duration
+    }));
+  } else {
+    fetch('/api/device/swipe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serial: state.selectedDevice, x1: Math.round(x1), y1: Math.round(y1), x2: Math.round(x2), y2: Math.round(y2), duration })
+    }).catch(() => {});
+  }
+}
+window.sendDeviceSwipe = sendDeviceSwipe;
+
+function sendKeyEvent(keycode) {
+  if (state.selectedDevice === 'virtual') {
+    showToast(`Phím phần cứng: ${keycode}`, 'info');
+    return;
+  }
+  if (state.streamWs && state.streamWs.readyState === 1) {
+    state.streamWs.send(JSON.stringify({
+      type: 'key',
+      serial: state.selectedDevice,
+      keycode
+    }));
+  }
+}
+window.sendKeyEvent = sendKeyEvent;
+
+function reloadApp() {
+  if (state.selectedDevice === 'virtual') {
+    const iframe = document.getElementById('simulatorIframe');
+    if (iframe) iframe.src = iframe.src;
+    showToast('Đang tải lại giao diện máy ảo...', 'info');
+    return;
+  }
+  showToast('Đang gửi tín hiệu Reload (R+R) tới ứng dụng...', 'info');
+  sendKeyEvent(46); // KEYCODE_R
+  setTimeout(() => sendKeyEvent(46), 100);
+}
+window.reloadApp = reloadApp;
+
+function openDevMenu() {
+  if (state.selectedDevice === 'virtual') {
+    showToast('Dev Menu: Nhấn phím D trên bàn phím', 'info');
+    return;
+  }
+  showToast('Đang mở React Native Dev Menu...', 'info');
+  sendKeyEvent(82); // KEYCODE_MENU
+}
+window.openDevMenu = openDevMenu;
+
+async function cancelBuild() {
+  try {
+    const res = await fetch('/api/build/cancel', { method: 'POST' });
+    const data = await res.json();
+    showToast(data.message || 'Đã gửi yêu cầu hủy build', 'info');
+  } catch (e) {
+    showToast(`Lỗi: ${e.message}`, 'error');
+  }
+}
+window.cancelBuild = cancelBuild;
 // ==========================================
 // Toast Notifications System
 // ==========================================
@@ -1637,19 +2393,17 @@ function togglePhoneRotation(forceState) {
 
   if (isRotated) {
     frame.classList.add('landscape');
-    frame.style.width = '840px';
-    frame.style.height = '380px';
-    showToast('Chế độ: Màn hình ngang (Landscape 840x380)', 'info');
+    frame.style.width = '844px';
+    frame.style.height = '390px';
+    showToast('Chế độ: Màn hình ngang (Landscape 844x390)', 'info');
+    applyZoom(90);
   } else {
     frame.classList.remove('landscape');
     frame.style.width = '390px';
-    frame.style.height = '820px';
-    showToast('Chế độ: Màn hình dọc (Portrait 390x820)', 'info');
+    frame.style.height = '844px';
+    showToast('Chế độ: Màn hình dọc (Portrait 390x844)', 'info');
+    applyZoom(90);
   }
-  
-  // Consistently preserve the active zoom percentage (default 93%)
-  const currentZoomPercent = Math.round((state.scale || 0.93) * 100);
-  applyZoom(currentZoomPercent);
 }
 window.togglePhoneRotation = togglePhoneRotation;
 
@@ -1859,9 +2613,16 @@ window.refreshDevices = refreshDevices;
 // Setup All Event Listeners
 // ==========================================
 function setupEventListeners() {
+  // Setup canvas touch/tap/swipe interaction for ADB devices & emulators
+  setupCanvasInteraction();
+
   // Device Environment Selection
   el.deviceSelect?.addEventListener('change', (e) => onDeviceChanged(e.target.value));
   el.btnRefreshDevices?.addEventListener('click', refreshDevices);
+
+  // Initialize Screen Color Profile (Default: 1:1 Bit-Exact Raw Color)
+  const savedColorProfile = localStorage.getItem('rn_color_profile') || 'natural';
+  setColorProfile(savedColorProfile);
 
   // Quick Action Buttons
   el.btnQuickReload?.addEventListener('click', reloadApp);
@@ -1915,7 +2676,7 @@ function setupEventListeners() {
     const port = portInput?.value.trim() || '5555';
     if (!ip) {
       if (feedback) {
-        feedback.innerHTML = '⚠️ Vui lòng nhập địa chỉ IP của điện thoại!';
+        feedback.innerHTML = 'Vui lòng nhập địa chỉ IP của điện thoại!';
         feedback.className = 'status-banner-error';
       }
       return;
@@ -1925,17 +2686,17 @@ function setupEventListeners() {
     if (connectText) connectText.textContent = 'Đang kết nối...';
     if (btn) btn.disabled = true;
     if (feedback) {
-      feedback.innerHTML = `⚡ Đang kết nối tới <strong>${ip}:${port}</strong> qua Wi-Fi ADB...`;
+      feedback.innerHTML = `Đang kết nối tới <strong>${ip}:${port}</strong> qua Wi-Fi ADB...`;
       feedback.className = 'status-banner-loading';
     }
 
     // Helper for success
     async function handleSuccess(deviceName = 'OPPO Reno8 T 5G') {
       if (feedback) {
-        feedback.innerHTML = `✅ <strong>Kết nối thành công!</strong> Thiết bị: ${deviceName} (${ip}:${port})`;
+        feedback.innerHTML = `<strong>Kết nối thành công!</strong> Thiết bị: ${deviceName} (${ip}:${port})`;
         feedback.className = 'status-banner-success';
       }
-      showToast(`✅ Đã kết nối thành công thiết bị Wi-Fi: ${ip}:${port}!`, 'success');
+      showToast(`Đã kết nối thành công thiết bị Wi-Fi: ${ip}:${port}!`, 'success');
       saveRecentWifiDevice(ip, port, deviceName);
       renderRecentWifiList();
       
@@ -1954,10 +2715,10 @@ function setupEventListeners() {
     // Helper for failure
     function handleFailure(errorMsg) {
       if (feedback) {
-        feedback.innerHTML = `❌ <strong>Không thể kết nối:</strong> ${errorMsg || 'Vui lòng kiểm tra lại IP & Cổng trên điện thoại!'}`;
+        feedback.innerHTML = `<strong>Không thể kết nối:</strong> ${errorMsg || 'Vui lòng kiểm tra lại IP & Cổng trên điện thoại!'}`;
         feedback.className = 'status-banner-error';
       }
-      showToast(`❌ Kết nối thất bại: ${errorMsg}`, 'error');
+      showToast(`Kết nối thất bại: ${errorMsg}`, 'error');
       if (btn) btn.disabled = false;
       if (connectText) connectText.textContent = 'Kết nối';
     }
@@ -2096,7 +2857,7 @@ async function capturePhoneScreenshot() {
 
       const res = await window.electronAPI.captureRect(bounds);
       if (res && res.success) {
-        showToast('📸 Đã chụp & sao chép ảnh vào Clipboard (Ctrl + V để dán)!', 'success');
+        showToast('Đã chụp & sao chép ảnh vào Clipboard (Ctrl + V để dán)!', 'success');
         return;
       }
     }
@@ -2144,7 +2905,7 @@ async function copyBlobToClipboard(blob) {
       const dataUrl = reader.result;
       const res = await window.electronAPI.writeImageToClipboard(dataUrl);
       if (res && res.success) {
-        showToast('📸 Đã chụp & sao chép ảnh vào Clipboard (Ctrl + V để dán)!', 'success');
+        showToast('Đã chụp & sao chép ảnh vào Clipboard (Ctrl + V để dán)!', 'success');
       } else {
         copyDataUrlFallback(dataUrl);
       }
@@ -2158,7 +2919,7 @@ async function copyBlobToClipboard(blob) {
     try {
       const item = new ClipboardItem({ 'image/png': blob });
       await navigator.clipboard.write([item]);
-      showToast('📸 Đã chụp & sao chép ảnh vào Clipboard (Ctrl + V để dán)!', 'success');
+      showToast('Đã chụp & sao chép ảnh vào Clipboard (Ctrl + V để dán)!', 'success');
       return;
     } catch (clipErr) {
       console.warn('Navigator clipboard error, trying fallback:', clipErr);
@@ -2177,7 +2938,7 @@ async function copyDataUrlToClipboard(dataUrl) {
   if (window.electronAPI && window.electronAPI.writeImageToClipboard) {
     const res = await window.electronAPI.writeImageToClipboard(dataUrl);
     if (res && res.success) {
-      showToast('📸 Đã chụp & sao chép ảnh vào Clipboard (Ctrl + V để dán)!', 'success');
+      showToast('Đã chụp & sao chép ảnh vào Clipboard (Ctrl + V để dán)!', 'success');
       return;
     }
   }
@@ -2188,7 +2949,7 @@ async function copyDataUrlToClipboard(dataUrl) {
     const blob = await res.blob();
     if (navigator.clipboard && navigator.clipboard.write) {
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-      showToast('📸 Đã chụp & sao chép ảnh vào Clipboard (Ctrl + V để dán)!', 'success');
+      showToast('Đã chụp & sao chép ảnh vào Clipboard (Ctrl + V để dán)!', 'success');
       return;
     }
   } catch (e) {}
@@ -2203,7 +2964,7 @@ function copyDataUrlFallback(dataUrl) {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  showToast('📸 Đã tải ảnh chụp màn hình về máy!', 'success');
+  showToast('Đã tải ảnh chụp màn hình về máy!', 'success');
 }
 
 // ==========================================
@@ -2275,7 +3036,7 @@ async function copyQrLink() {
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText(text);
-      showToast('📋 Đã sao chép link xem trên điện thoại!', 'success');
+      showToast('Đã sao chép link xem trên điện thoại!', 'success');
       return;
     }
   } catch (e) {}
@@ -2283,7 +3044,7 @@ async function copyQrLink() {
   if (input) {
     input.select();
     document.execCommand('copy');
-    showToast('📋 Đã sao chép link xem trên điện thoại!', 'success');
+    showToast('Đã sao chép link xem trên điện thoại!', 'success');
   }
 }
 window.copyQrLink = copyQrLink;

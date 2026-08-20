@@ -1,6 +1,17 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, clipboard, nativeImage } = require('electron');
 const path = require('path');
 const http = require('http');
+const os = require('os');
+
+// Disable GPU / Disk cache locks that cause Access is denied (0x5) on Windows
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+app.commandLine.appendSwitch('no-sandbox');
+
+// Use dedicated temp directory for session data
+const tempUserData = path.join(os.tmpdir(), 'bas_electron_data_' + process.pid);
+try {
+  app.setPath('userData', tempUserData);
+} catch (e) {}
 
 let mainWindow = null;
 let serverInstance = null;
@@ -27,7 +38,6 @@ function waitForServer(url, timeout = 10000) {
 
 function startBackendServer() {
   try {
-    // If running in same node process
     process.env.OPEN_BROWSER = 'false';
     require('../server.js');
     console.log('🚀 [Electron Main] Backend Express Server started internally on port ' + PORT);
@@ -55,6 +65,10 @@ async function createWindow() {
       sandbox: false,
       webSecurity: false
     }
+  });
+
+  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    console.log(`[Renderer Log] ${message}`);
   });
 
   try {

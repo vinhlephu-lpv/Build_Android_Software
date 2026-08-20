@@ -67,7 +67,7 @@ class WatcherService extends EventEmitter {
         }, 200);
       });
 
-      console.log(`👁️ [Watcher] Đang theo dõi thay đổi mã nguồn tại: ${projectPath}`);
+      console.log(`[Watcher] Đang theo dõi thay đổi mã nguồn tại: ${projectPath}`);
     } catch (err) {
       console.warn(`[Watcher] Could not start recursive watcher on ${projectPath}:`, err.message);
     }

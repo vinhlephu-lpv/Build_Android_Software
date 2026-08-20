@@ -95,17 +95,17 @@ class MetroService {
     this.broadcastLog(`Starting Metro Bundler for project: ${projectPath} on port ${this.port}...`, 'info');
 
     const isWindows = process.platform === 'win32';
-    const npmCmd = isWindows ? 'npx.cmd' : 'npx';
-    const args = ['react-native', 'start', '--port', `${this.port}`];
+    const cmd = isWindows ? 'cmd.exe' : 'npx';
+    const args = isWindows ? ['/c', 'npx', 'react-native', 'start', '--port', `${this.port}`] : ['react-native', 'start', '--port', `${this.port}`];
 
     if (options.resetCache) {
       args.push('--reset-cache');
     }
 
     try {
-      this.process = spawn(npmCmd, args, {
+      this.process = spawn(cmd, args, {
         cwd: projectPath,
-        shell: isWindows,
+        shell: false,
         env: { ...process.env, FORCE_COLOR: 'true' }
       });
 

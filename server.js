@@ -14,6 +14,7 @@ const buildService = require('./src/services/buildService');
 const logcatService = require('./src/services/logcatService');
 const standaloneRunnerService = require('./src/services/standaloneRunnerService');
 const watcherService = require('./src/services/watcherService');
+const emulatorService = require('./src/services/emulatorService');
 
 const app = express();
 const server = http.createServer(app);
@@ -30,15 +31,20 @@ const defaultProjectPath = path.resolve(__dirname, '..', 'ExampleApp');
 // REST APIs: Virtual Standalone Simulator (Zero Android Studio / Device Needed)
 // ==========================================
 
+// Health Check API
+app.get('/api/status', (req, res) => {
+  res.json({ success: true, status: 'ok', serverTime: Date.now() });
+});
+
 // 1. Virtual Build & Serve Bundle
 app.post('/api/virtual-build/build', async (req, res) => {
   const projectPath = req.body.projectPath || defaultProjectPath;
 
   buildService.broadcastStatus('compiling', { message: 'Đang biên dịch React Native cho Máy Ảo Nội Bộ...' });
   buildService.broadcastLog('====================================================', 'info');
-  buildService.broadcastLog('🚀 KHỞI ĐỘNG BIÊN DỊCH REACT NATIVE (STANDALONE SIMULATOR)', 'info');
-  buildService.broadcastLog(`📁 Thư mục dự án: ${projectPath}`, 'info');
-  buildService.broadcastLog('⚡ Chế độ: Máy ảo độc lập (Không cần Android Studio / Thiết bị thật)', 'info');
+  buildService.broadcastLog('[Pipeline] BẮT ĐẦU BIÊN DỊCH REACT NATIVE (STANDALONE SIMULATOR)', 'info');
+  buildService.broadcastLog(`[Project] Thư mục dự án: ${projectPath}`, 'info');
+  buildService.broadcastLog('[Mode] Chế độ: Máy ảo độc lập (Không cần Android Studio / Thiết bị thật)', 'info');
   buildService.broadcastLog('====================================================', 'info');
 
   try {
@@ -51,15 +57,15 @@ app.post('/api/virtual-build/build', async (req, res) => {
     // Start Live Hot Reload File Watcher on this project
     watcherService.startWatching(projectPath, async (changedFile, projPath) => {
       const fileName = path.basename(changedFile);
-      buildService.broadcastLog(`⚡ [Hot Reload] Phát hiện thay đổi: ${fileName}`, 'warn');
-      buildService.broadcastLog(`🔨 Đang tự động đóng gói lại mã nguồn...`, 'info');
+      buildService.broadcastLog(`[Hot Reload] Phát hiện thay đổi: ${fileName}`, 'warn');
+      buildService.broadcastLog(`[Transpile] Đang tự động đóng gói lại mã nguồn...`, 'info');
 
       try {
         const reResult = await standaloneRunnerService.buildBundle(projPath, (msg, level) => {
           buildService.broadcastLog(msg, level);
         });
 
-        buildService.broadcastLog(`🚀 [Hot Reload] Đã cập nhật ứng dụng tức thì trong ${reResult.elapsed}ms!`, 'success');
+        buildService.broadcastLog(`[Hot Reload:Success] Đã cập nhật ứng dụng tức thì trong ${reResult.elapsed}ms!`, 'success');
         buildService.broadcastStatus('hot_reload', {
           changedFile: fileName,
           elapsed: reResult.elapsed,
@@ -67,7 +73,7 @@ app.post('/api/virtual-build/build', async (req, res) => {
           timestamp: new Date().toISOString()
         });
       } catch (e) {
-        buildService.broadcastLog(`❌ [Hot Reload Lỗi] ${e.message}`, 'error');
+        buildService.broadcastLog(`[Hot Reload:Error] ${e.message}`, 'error');
       }
     });
 
@@ -187,6 +193,98 @@ app.post('/api/connect-wifi', async (req, res) => {
   res.json(result);
 });
 
+// Device Input Controls
+app.post('/api/device/tap', async (req, res) => {
+  const { serial, x, y } = req.body;
+  if (x === undefined || y === undefined) return res.status(400).json({ success: false, error: 'x and y are required' });
+  const result = await adbService.sendTap(serial, x, y);
+  res.json(result);
+});
+
+app.post('/api/device/swipe', async (req, res) => {
+  const { serial, x1, y1, x2, y2, duration } = req.body;
+  const result = await adbService.sendSwipe(serial, x1, y1, x2, y2, duration || 200);
+  res.json(result);
+});
+
+app.post('/api/device/key', async (req, res) => {
+  const { serial, keycode } = req.body;
+  const result = await adbService.sendKeyEvent(serial, keycode);
+  res.json(result);
+});
+
+app.post('/api/device/text', async (req, res) => {
+  const { serial, text } = req.body;
+  const result = await adbService.sendText(serial, text || '');
+  res.json(result);
+});
+
+// ==========================================
+// REST APIs: Android Emulator (AVD) & Third-Party Emulators
+// ==========================================
+
+app.get('/api/emulator/list', async (req, res) => {
+  try {
+    const avds = await emulatorService.listAvds();
+    res.json({ success: true, avds });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/emulator/start', async (req, res) => {
+  const { avdName, wipeData, gpu } = req.body;
+  if (!avdName) return res.status(400).json({ success: false, error: 'avdName is required' });
+
+  buildService.broadcastLog(`====================================================`, 'info');
+  buildService.broadcastLog(`[Emulator] KHỞI ĐỘNG MÁY ẢO ANDROID: ${avdName}`, 'info');
+  buildService.broadcastLog(`====================================================`, 'info');
+
+  try {
+    const result = await emulatorService.startEmulator(avdName, { wipeData, gpu }, (msg, level) => {
+      buildService.broadcastLog(msg, level);
+    });
+    res.json(result);
+  } catch (err) {
+    buildService.broadcastLog(`[Error] Không thể khởi động máy ảo: ${err.message}`, 'error');
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/emulator/stop', async (req, res) => {
+  const { serial } = req.body;
+  try {
+    const result = await emulatorService.stopEmulator(serial);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/emulator/create', async (req, res) => {
+  const { name, systemImage, device } = req.body;
+  try {
+    buildService.broadcastLog(`[AVD] Đang tạo máy ảo mới: ${name || 'Pixel_7_API_34'}...`, 'info');
+    const result = await emulatorService.createDefaultAvd(name, systemImage, device);
+    buildService.broadcastLog(`${result.message}`, 'success');
+    res.json(result);
+  } catch (err) {
+    buildService.broadcastLog(`[Error] Lỗi tạo máy ảo: ${err.message}`, 'error');
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/emulator/scan-third-party', async (req, res) => {
+  try {
+    const results = await emulatorService.scanAndConnectAllThirdParty((msg, level) => {
+      buildService.broadcastLog(msg, level);
+    });
+    res.json({ success: true, results });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Start Build & Run on Real / ADB Device
 app.post('/api/build/start', async (req, res) => {
   const { projectPath, serial, clean } = req.body;
@@ -205,7 +303,7 @@ app.post('/api/build/cancel', (req, res) => {
     try {
       buildService.currentProcess.kill();
       buildService.isBuilding = false;
-      buildService.broadcastLog('🛑 Tiến trình build đã bị hủy bởi người dùng', 'warn');
+      buildService.broadcastLog('[Cancel] Tiến trình build đã bị hủy bởi người dùng', 'warn');
       buildService.broadcastStatus('idle');
     } catch (e) {}
   }
@@ -257,7 +355,7 @@ app.post('/api/terminal/open-and-run', (req, res) => {
 
   const { exec } = require('child_process');
   if (process.platform === 'win32') {
-    const fullCmd = `start "${termTitle}" cmd.exe /k "title ${termTitle} && color 0B && echo ======================================================== && echo 🚀 THUC THI LENH TRUC TIEP: && echo 📁 Thu muc: ${targetDir} && echo 🔨 Lenh: ${cmdToRun} && echo 💡 Nhan Ctrl+C de dung tien trinh bat ky luc nao! && echo ======================================================== && echo. && cd /d \"${targetDir.replace(/\//g, '\\')}\" && ${cmdToRun}"`;
+    const fullCmd = `start "${termTitle}" cmd.exe /k "title ${termTitle} && color 0B && echo ======================================================== && echo THUC THI LENH TRUC TIEP: && echo Thu muc: ${targetDir} && echo Lenh: ${cmdToRun} && echo Nhan Ctrl+C de dung tien trinh bat ky luc nao! && echo ======================================================== && echo. && cd /d \"${targetDir.replace(/\//g, '\\')}\" && ${cmdToRun}"`;
     exec(fullCmd, { cwd: targetDir }, (err) => {
       if (err) return res.status(500).json({ success: false, error: err.message });
       res.json({ success: true, message: 'Đã mở cửa sổ Terminal ngoài' });
@@ -546,16 +644,16 @@ server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
     console.log(`ℹ️ [Server] Port ${PORT} is already in active use. Reusing running backend instance.`);
   } else {
-    console.error('❌ [Server] Unexpected error:', err);
+    console.error('[Server:Error] Unexpected error:', err);
   }
 });
 
 server.listen(PORT, () => {
   const url = `http://localhost:${PORT}`;
   console.log(`\n======================================================`);
-  console.log(`🚀 Build Android Software is RUNNING!`);
-  console.log(`🌐 Web Interface: ${url}`);
-  console.log(`📂 Default RN Project: ${defaultProjectPath}`);
-  console.log(`📱 Mode: Standalone Virtual Simulator (Zero Android Studio / Physical Device Required)`);
+  console.log(`[Server] Build Android Software is RUNNING!`);
+  console.log(`[Server] Web Interface: ${url}`);
+  console.log(`[Server] Default RN Project: ${defaultProjectPath}`);
+  console.log(`[Server] Mode: Standalone Virtual Simulator (Zero Android Studio / Physical Device Required)`);
   console.log(`======================================================\n`);
 });

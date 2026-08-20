@@ -43,7 +43,7 @@ class AdbService {
     }
 
     const lines = res.stdout.split('\n').map(l => l.trim()).filter(Boolean);
-    const devices = [];
+    let devices = [];
 
     // Skip the first line: "List of devices attached"
     for (let i = 1; i < lines.length; i++) {
@@ -63,7 +63,18 @@ class AdbService {
           if (part.startsWith('device:')) deviceName = part.replace('device:', '');
         }
 
-        const isEmulator = serial.startsWith('emulator-');
+        const isEmulator = serial.startsWith('emulator-') || 
+                           serial.startsWith('127.0.0.1:') || 
+                           serial.startsWith('localhost:') ||
+                           model.toLowerCase().includes('emulator') ||
+                           model.toLowerCase().includes('sdk') ||
+                           model.toLowerCase().includes('nox') ||
+                           model.toLowerCase().includes('vbox') ||
+                           model.toLowerCase().includes('subsystem');
+
+        if (model.toLowerCase().includes('sdk gphone') || model.toLowerCase().includes('sdk_gphone')) {
+          model = 'Google Pixel 7 (Android 14)';
+        }
 
         devices.push({
           serial,
@@ -75,6 +86,12 @@ class AdbService {
           isOnline: state === 'device'
         });
       }
+    }
+
+    // Deduplicate: If emulator-5554 is present, remove duplicate 127.0.0.1:5555 connection
+    const hasEmulatorSerial = devices.some(d => d.serial.startsWith('emulator-'));
+    if (hasEmulatorSerial) {
+      devices = devices.filter(d => d.serial !== '127.0.0.1:5555' && d.serial !== 'localhost:5555');
     }
 
     return devices;
@@ -164,19 +181,31 @@ class AdbService {
     };
   }
 
-  async sendKeyEvent(serial, keycode) {
-    const prefix = serial ? `-s ${serial}` : '';
-    return await this.execAdb(`${prefix} shell input keyevent ${keycode}`);
+  sendKeyEvent(serial, keycode) {
+    return new Promise((resolve) => {
+      const args = [...(serial ? ['-s', serial] : []), 'shell', 'input', 'keyevent', String(keycode)];
+      const proc = spawn(this.adbPath, args, { windowsHide: true });
+      proc.on('close', (code) => resolve({ success: code === 0 }));
+      proc.on('error', (err) => resolve({ success: false, error: err.message }));
+    });
   }
 
-  async sendTap(serial, x, y) {
-    const prefix = serial ? `-s ${serial}` : '';
-    return await this.execAdb(`${prefix} shell input tap ${Math.round(x)} ${Math.round(y)}`);
+  sendTap(serial, x, y) {
+    return new Promise((resolve) => {
+      const args = [...(serial ? ['-s', serial] : []), 'shell', 'input', 'tap', String(Math.round(x)), String(Math.round(y))];
+      const proc = spawn(this.adbPath, args, { windowsHide: true });
+      proc.on('close', (code) => resolve({ success: code === 0 }));
+      proc.on('error', (err) => resolve({ success: false, error: err.message }));
+    });
   }
 
-  async sendSwipe(serial, x1, y1, x2, y2, durationMs = 250) {
-    const prefix = serial ? `-s ${serial}` : '';
-    return await this.execAdb(`${prefix} shell input swipe ${Math.round(x1)} ${Math.round(y1)} ${Math.round(x2)} ${Math.round(y2)} ${durationMs}`);
+  sendSwipe(serial, x1, y1, x2, y2, durationMs = 250) {
+    return new Promise((resolve) => {
+      const args = [...(serial ? ['-s', serial] : []), 'shell', 'input', 'swipe', String(Math.round(x1)), String(Math.round(y1)), String(Math.round(x2)), String(Math.round(y2)), String(durationMs)];
+      const proc = spawn(this.adbPath, args, { windowsHide: true });
+      proc.on('close', (code) => resolve({ success: code === 0 }));
+      proc.on('error', (err) => resolve({ success: false, error: err.message }));
+    });
   }
 
   async sendText(serial, text) {

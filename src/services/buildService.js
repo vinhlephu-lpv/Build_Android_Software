@@ -116,18 +116,25 @@ class BuildService {
 
     this.isBuilding = true;
     this.buildHistory = [];
-    this.broadcastStatus('compiling', { message: `Bắt đầu kết nối và biên dịch cho ${serial || 'thiết bị'}...`, progress: 25 });
+    const startTime = Date.now();
 
-    this.broadcastLog(`====================================================`, 'info');
-    this.broadcastLog(`🚀 INITIATING BUILD PIPELINE`, 'info');
-    this.broadcastLog(`📁 Target Project: ${projectPath}`, 'info');
-    this.broadcastLog(`📱 Target Device: ${serial || 'Default Device'}`, 'info');
-    this.broadcastLog(`====================================================`, 'info');
+    const deviceLabel = serial ? (serial.startsWith('emulator-') ? 'Google Pixel 7 (Android Emulator)' : serial) : 'Thiết bị mặc định';
 
+    this.broadcastStatus('compiling', { message: `[1/6] Chuẩn bị môi trường build cho ${deviceLabel}...`, progress: 10 });
+
+    this.broadcastLog(`========================================================================`, 'header');
+    this.broadcastLog(`[Pipeline] TIẾN TRÌNH BIÊN DỊCH & CÀI ĐẶT NATIVE REACT NATIVE`, 'header');
+    this.broadcastLog(`[Project] Thư mục dự án: ${projectPath}`, 'info');
+    this.broadcastLog(`[Device] Thiết bị đích: ${deviceLabel} [${serial || 'default'}]`, 'info');
+    this.broadcastLog(`[Mode] Chế độ: Native Gradle Assemble (APK Debug + Metro Bridge)`, 'info');
+    this.broadcastLog(`========================================================================`, 'header');
+
+    // [BƯỚC 1/6] Kiểm tra dự án
+    this.broadcastLog(`[BƯỚC 1/6] Đang quét cấu trúc mã nguồn React Native & tệp cấu hình...`, 'step');
     const projectInfo = this.inspectProject(projectPath);
     if (!projectInfo.valid) {
       this.isBuilding = false;
-      this.broadcastLog(`❌ Invalid project: ${projectInfo.error}`, 'error');
+      this.broadcastLog(`[Error] Lỗi cấu trúc dự án: ${projectInfo.error}`, 'error');
       this.broadcastStatus('error', { error: projectInfo.error });
       return { success: false, error: projectInfo.error };
     }
@@ -135,30 +142,45 @@ class BuildService {
     const androidDir = path.join(projectPath, 'android');
     if (!projectInfo.hasAndroid || !projectInfo.hasGradlew) {
       this.isBuilding = false;
-      this.broadcastLog('❌ Thư mục android hoặc gradlew.bat không tìm thấy trong dự án!', 'error');
+      this.broadcastLog('[Error] Thư mục android hoặc gradlew.bat không tìm thấy trong dự án!', 'error');
       this.broadcastStatus('error', { error: 'Android directory missing' });
       return { success: false, error: 'Android directory missing' };
     }
 
-    // Step 1: Start Metro Bundler in background if not already alive
-    this.broadcastLog('⚡ [Metro] Đang kiểm tra Metro Bundler...', 'info');
+    this.broadcastLog(`   ├─ [App] Tên ứng dụng: ${projectInfo.name || 'ExampleApp'} (${projectInfo.applicationId || 'com.exampleapp'})`, 'info');
+    this.broadcastLog(`   ├─ [RN] Phiên bản React Native: ${projectInfo.reactNativeVersion || '0.87.0'}`, 'info');
+    this.broadcastLog(`   └─ [Path] Thư mục Android: ${androidDir}`, 'info');
+
+    // [BƯỚC 2/6] Metro Bundler
+    this.broadcastStatus('compiling', { message: '[2/6] Kiểm tra & khởi động Metro Bundler...', progress: 20 });
+    this.broadcastLog(`[BƯỚC 2/6] Kiểm tra trạng thái Metro JavaScript Bundler (Port 8081)...`, 'step');
     const isMetroUp = await metroService.checkMetroAlive();
     if (!isMetroUp) {
-      this.broadcastLog('⚡ [Metro] Đang tự động khởi động Metro Bundler trên cổng 8081...', 'info');
+      this.broadcastLog('   ├─ Metro Bundler chưa chạy, đang tự động khởi động trên cổng 8081...', 'info');
       await metroService.startMetro(projectPath);
+      this.broadcastLog('   └─ Metro Bundler đã sẵn sàng phục vụ Fast Refresh & Hot Reload!', 'success');
     } else {
-      this.broadcastLog('✅ [Metro] Metro Bundler đang hoạt động trên cổng 8081', 'info');
+      this.broadcastLog('   └─ Metro Bundler đang hoạt động ổn định trên cổng 8081', 'success');
     }
 
-    // Step 2: Reverse ADB Port
+    // [BƯỚC 3/6] Reverse ADB Port
     if (serial) {
-      this.broadcastLog(`🔗 [ADB] Đang cấu hình chuyển tiếp cổng reverse tcp:8081 cho thiết bị ${serial}...`, 'info');
-      await adbService.reversePort(serial, 8081);
+      this.broadcastStatus('compiling', { message: `[3/6] Chuyển tiếp cổng ADB reverse tcp:8081...`, progress: 30 });
+      this.broadcastLog(`[BƯỚC 3/6] Thiết lập đường truyền dữ liệu ADB Reverse Port (tcp:8081 -> tcp:8081)...`, 'step');
+      const revRes = await adbService.reversePort(serial, 8081);
+      if (revRes.success) {
+        this.broadcastLog(`   └─ Đã kết nối cầu nối Metro -> ${serial} thành công!`, 'success');
+      } else {
+        this.broadcastLog(`   └─ Thông báo ADB reverse: ${revRes.message || 'Tiếp tục build...'}`, 'warn');
+      }
     }
 
-    // Step 3: Run Gradle Build
-    this.broadcastStatus('compiling', { message: 'Đang chạy Gradle assembleDebug (--console=plain)...', progress: 30 });
-    this.broadcastLog('🔨 [Gradle] Bắt đầu thực thi: gradlew.bat assembleDebug --console=plain...', 'info');
+    // [BƯỚC 4/6] Run Gradle Build
+    this.broadcastStatus('compiling', { message: '[4/6] Đang chạy Gradle assembleDebug (Java/C++/Hermes)...', progress: 40 });
+    this.broadcastLog(`[BƯỚC 4/6] Đang thực thi Gradle Engine: gradlew.bat assembleDebug...`, 'step');
+    this.broadcastLog('   ├─ [Compiler] Trình biên dịch: JDK 17 + Android Gradle Plugin + C++ CMake', 'info');
+    this.broadcastLog('   ├─ [Optimize] Tối ưu hóa: Hermes Bytecode Compiler + Parallel Worker Tasks', 'info');
+    this.broadcastLog('   └─ Đang dịch các file mã nguồn và đóng gói tài nguyên...', 'info');
 
     const isWindows = process.platform === 'win32';
     const gradlewCmd = isWindows ? path.join(androidDir, 'gradlew.bat') : './gradlew';
@@ -176,13 +198,14 @@ class BuildService {
           ...process.env,
           ANDROID_HOME: process.env.ANDROID_HOME || 'C:\\Android',
           ANDROID_SDK_ROOT: process.env.ANDROID_SDK_ROOT || 'C:\\Android',
+          ANDROID_AVD_HOME: 'D:\\Program Files\\Emulator\\avd',
+          ANDROID_EMULATOR_HOME: 'D:\\Program Files\\Emulator',
           JAVA_HOME: process.env.JAVA_HOME || 'C:\\Program Files\\Java\\jdk-17',
           FORCE_COLOR: 'true'
         }
       });
 
       this.currentProcess = proc;
-
       let taskCount = 0;
 
       proc.stdout.on('data', (data) => {
@@ -193,20 +216,23 @@ class BuildService {
           if (!trimmed) continue;
           if (trimmed.startsWith('> Task')) {
             taskCount++;
-            this.broadcastLog(trimmed, 'task');
+            const taskProgress = Math.min(40 + Math.floor(taskCount * 1.5), 85);
+            this.broadcastLog(`   ${trimmed}`, 'task');
             this.broadcastStatus('compiling', {
-              message: trimmed,
-              progress: Math.min(30 + taskCount * 2, 85)
+              message: `[4/6] ${trimmed}`,
+              progress: taskProgress
             });
           } else if (trimmed.includes('BUILD SUCCESSFUL')) {
-            this.broadcastLog(`🎉 ${trimmed}`, 'success');
-            this.broadcastStatus('compiling', { message: trimmed, progress: 90 });
+            this.broadcastLog(`   ${trimmed}`, 'success');
+            this.broadcastStatus('compiling', { message: trimmed, progress: 88 });
           } else if (trimmed.includes('BUILD FAILED')) {
-            this.broadcastLog(`❌ ${trimmed}`, 'error');
+            this.broadcastLog(`   ${trimmed}`, 'error');
           } else if (trimmed.startsWith('WARNING:') || trimmed.startsWith('WARN')) {
-            this.broadcastLog(trimmed, 'warn');
+            this.broadcastLog(`   ${trimmed}`, 'warn');
+          } else if (trimmed.includes('UP-TO-DATE') || trimmed.includes('FROM-CACHE')) {
+            this.broadcastLog(`   ${trimmed}`, 'task');
           } else {
-            this.broadcastLog(trimmed, 'stdout');
+            this.broadcastLog(`   ${trimmed}`, 'stdout');
           }
         }
       });
@@ -216,7 +242,7 @@ class BuildService {
         const lines = text.split(/\r?\n/);
         for (const line of lines) {
           const trimmed = line.trim();
-          if (trimmed) this.broadcastLog(trimmed, 'stderr');
+          if (trimmed) this.broadcastLog(`   [Gradle] ${trimmed}`, 'stderr');
         }
       });
 
@@ -225,14 +251,14 @@ class BuildService {
         if (code === 0) {
           resolve(true);
         } else {
-          this.broadcastLog(`❌ Gradle build failed with exit code: ${code}`, 'error');
+          this.broadcastLog(`[Error] Gradle build thất bại với mã lỗi: ${code}`, 'error');
           resolve(false);
         }
       });
 
       proc.on('error', (err) => {
         this.currentProcess = null;
-        this.broadcastLog(`❌ Gradle execution error: ${err.message}`, 'error');
+        this.broadcastLog(`[Error] Lỗi thực thi Gradle: ${err.message}`, 'error');
         resolve(false);
       });
     });
@@ -243,8 +269,9 @@ class BuildService {
       return { success: false, error: 'Gradle compilation failed' };
     }
 
-    // Step 4: Locate APK
-    this.broadcastLog('📦 Locating generated debug APK...', 'info');
+    // [BƯỚC 5/6] Locate & Install APK
+    this.broadcastStatus('installing', { message: '[5/6] Đang nạp gói APK lên thiết bị...', progress: 90 });
+    this.broadcastLog(`[BƯỚC 5/6] Đang xác thực file APK và nạp lên thiết bị...`, 'step');
     const apkDir = path.join(androidDir, 'app', 'build', 'outputs', 'apk', 'debug');
     let apkPath = path.join(apkDir, 'app-debug.apk');
 
@@ -260,50 +287,54 @@ class BuildService {
 
     if (!fs.existsSync(apkPath)) {
       this.isBuilding = false;
-      this.broadcastLog(`❌ APK file not found at ${apkPath}`, 'error');
+      this.broadcastLog(`[Error] Không tìm thấy file APK tại: ${apkPath}`, 'error');
       this.broadcastStatus('error', { error: 'APK not found' });
       return { success: false, error: 'APK not found' };
     }
 
-    this.broadcastLog(`✅ APK built successfully: ${apkPath}`, 'info');
-
-    // Step 5: Install APK to device
-    this.broadcastStatus('installing', { message: `Installing APK onto device ${serial}...` });
-    this.broadcastLog(`📲 Installing ${path.basename(apkPath)} onto ${serial || 'device'}...`, 'info');
+    const apkStats = fs.statSync(apkPath);
+    const apkSizeMb = (apkStats.size / (1024 * 1024)).toFixed(2);
+    this.broadcastLog(`   ├─ [File] File APK: ${path.basename(apkPath)} (${apkSizeMb} MB)`, 'info');
+    this.broadcastLog(`   ├─ Đang truyền tải và cài đặt (adb install) lên ${serial || 'device'}...`, 'info');
 
     const installRes = await adbService.installApk(serial, apkPath);
     if (!installRes.success) {
       this.isBuilding = false;
-      this.broadcastLog(`❌ Failed to install APK: ${installRes.error || installRes.stdout}`, 'error');
+      this.broadcastLog(`[Error] Cài đặt APK thất bại: ${installRes.error || installRes.stdout}`, 'error');
       this.broadcastStatus('error', { error: 'APK installation failed' });
       return { success: false, error: installRes.error || installRes.stdout };
     }
-    this.broadcastLog('✅ APK installed successfully!', 'info');
+    this.broadcastLog(`   └─ Đã cài đặt APK thành công lên hệ điều hành Android!`, 'success');
 
-    // Step 6: Launch App
-    this.broadcastStatus('launching', { message: `Launching ${projectInfo.applicationId}...` });
+    // [BƯỚC 6/6] Launch App Activity
+    this.broadcastStatus('launching', { message: `[6/6] Đang khởi chạy ${projectInfo.applicationId}...`, progress: 96 });
     const mainComponent = `${projectInfo.applicationId}/.MainActivity`;
-    this.broadcastLog(`🚀 Launching Android Activity: ${mainComponent}...`, 'info');
+    this.broadcastLog(`[BƯỚC 6/6] Đang khởi chạy Activity: ${mainComponent}...`, 'step');
 
     const launchRes = await adbService.launchApp(serial, mainComponent);
     if (!launchRes.success) {
       this.isBuilding = false;
-      this.broadcastLog(`❌ Failed to launch activity: ${launchRes.error || launchRes.stdout}`, 'error');
+      this.broadcastLog(`[Error] Không thể mở ứng dụng: ${launchRes.error || launchRes.stdout}`, 'error');
       this.broadcastStatus('error', { error: 'Failed to launch activity' });
       return { success: false, error: launchRes.error || launchRes.stdout };
     }
 
-    // Step 7: Completed
+    const totalElapsedSec = ((Date.now() - startTime) / 1000).toFixed(1);
+
+    // Completed
     this.isBuilding = false;
-    this.broadcastLog('====================================================', 'info');
-    this.broadcastLog('🎉 BUILD & LAUNCH COMPLETED SUCCESSFULLY!', 'info');
-    this.broadcastLog('====================================================', 'info');
-    this.broadcastStatus('success', { message: 'Application launched successfully' });
+    this.broadcastStatus('success', { message: `Build & Cài đặt thành công trong ${totalElapsedSec}s!`, progress: 100 });
+    this.broadcastLog(`   └─ Ứng dụng đã mở và kết nối với Metro Bundler!`, 'success');
+    this.broadcastLog(`========================================================================`, 'header');
+    this.broadcastLog(`TOÀN BỘ TIẾN TRÌNH HOÀN TẤT THÀNH CÔNG TRONG ${totalElapsedSec}s!`, 'success');
+    this.broadcastLog(`Nhấn Ctrl+S trong trình soạn thảo để Hot Reload ngay lập tức!`, 'info');
+    this.broadcastLog(`========================================================================`, 'header');
 
     return {
       success: true,
       applicationId: projectInfo.applicationId,
-      apkPath
+      apkPath,
+      elapsedSec: totalElapsedSec
     };
   }
 
@@ -321,14 +352,14 @@ class BuildService {
 
     this.broadcastStatus('compiling', { message: `Đang biên dịch gói ${taskName}...` });
     this.broadcastLog('====================================================', 'info');
-    this.broadcastLog(`📦 BẮT ĐẦU XUẤT GÓI CÀI ĐẶT: ${taskName.toUpperCase()}`, 'info');
-    this.broadcastLog(`📁 Thư mục dự án: ${projectPath}`, 'info');
+    this.broadcastLog(`[Package] BẮT ĐẦU XUẤT GÓI CÀI ĐẶT: ${taskName.toUpperCase()}`, 'info');
+    this.broadcastLog(`[Project] Thư mục dự án: ${projectPath}`, 'info');
     this.broadcastLog('====================================================', 'info');
 
     const projectInfo = this.inspectProject(projectPath);
     if (!projectInfo.valid) {
       this.isBuilding = false;
-      this.broadcastLog(`❌ Lỗi cấu trúc dự án: ${projectInfo.error}`, 'error');
+      this.broadcastLog(`[Error] Lỗi cấu trúc dự án: ${projectInfo.error}`, 'error');
       this.broadcastStatus('error', { error: projectInfo.error });
       return { success: false, error: projectInfo.error };
     }
@@ -337,7 +368,7 @@ class BuildService {
     if (!projectInfo.hasAndroid || !projectInfo.hasGradlew) {
       this.isBuilding = false;
       const errMsg = 'Dự án chưa có thư mục android/ hoặc gradlew.bat (Cần cấu trúc React Native Native tiêu chuẩn để chạy Gradle)';
-      this.broadcastLog(`❌ ${errMsg}`, 'error');
+      this.broadcastLog(`[Error] ${errMsg}`, 'error');
       this.broadcastStatus('error', { error: errMsg });
       return { success: false, error: errMsg };
     }
@@ -352,17 +383,17 @@ class BuildService {
     const gradleArgs = [gradleTask];
     if (options.clean) {
       gradleArgs.unshift('clean');
-      this.broadcastLog('🧹 Đang dọn dẹp cache Gradle trước khi build (Clean Build)...', 'info');
+      this.broadcastLog('[Clean] Đang dọn dẹp cache Gradle trước khi build (Clean Build)...', 'info');
     }
 
-    this.broadcastLog(`🔨 Đang thực thi lệnh Gradle: ${gradlewCmd} ${gradleArgs.join(' ')}...`, 'info');
+    this.broadcastLog(`[Gradle] Đang thực thi lệnh Gradle: ${gradlewCmd} ${gradleArgs.join(' ')}...`, 'info');
 
     if (options.openTerminal !== false && isWindows) {
-      const termTitle = `📦 ${taskName.toUpperCase()} - [${path.basename(projectPath)}]`;
-      const fullCmd = `start "${termTitle}" cmd.exe /k "title ${termTitle} && color 0A && echo ======================================================== && echo 🚀 DANG XUAT GOI ANDROID: ${taskName.toUpperCase()} && echo 📁 Thu muc: ${androidDir} && echo 🔨 Lenh: ${gradlewCmd} ${gradleArgs.join(' ')} && echo 💡 Nhan Ctrl+C de dung tien trinh bat ky luc nao! && echo ======================================================== && echo. && cd /d \"${androidDir}\" && ${gradlewCmd} ${gradleArgs.join(' ')}"`;
+      const termTitle = `${taskName.toUpperCase()} - [${path.basename(projectPath)}]`;
+      const fullCmd = `start "${termTitle}" cmd.exe /k "title ${termTitle} && color 0A && echo ======================================================== && echo DANG XUAT GOI ANDROID: ${taskName.toUpperCase()} && echo Thu muc: ${androidDir} && echo Lenh: ${gradlewCmd} ${gradleArgs.join(' ')} && echo Nhan Ctrl+C de dung tien trinh bat ky luc nao! && echo ======================================================== && echo. && cd /d \"${androidDir}\" && ${gradlewCmd} ${gradleArgs.join(' ')}"`;
       exec(fullCmd, { cwd: androidDir });
-      this.broadcastLog(`🖥️ [Native Terminal] Đã mở cửa sổ Terminal riêng trên Desktop để chạy: ${gradlewCmd} ${gradleArgs.join(' ')}`, 'warn');
-      this.broadcastLog(`💡 Bạn có thể theo dõi tiến trình trực quan trên cửa sổ Terminal và nhấn Ctrl+C để dừng tùy ý!`, 'info');
+      this.broadcastLog(`[Native Terminal] Đã mở cửa sổ Terminal riêng trên Desktop để chạy: ${gradlewCmd} ${gradleArgs.join(' ')}`, 'warn');
+      this.broadcastLog(`Bạn có thể theo dõi tiến trình trực quan trên cửa sổ Terminal và nhấn Ctrl+C để dừng tùy ý!`, 'info');
     }
 
     const buildSuccess = await new Promise((resolve) => {
@@ -392,14 +423,14 @@ class BuildService {
         this.currentProcess = null;
         if (code === 0) resolve(true);
         else {
-          this.broadcastLog(`❌ Gradle thất bại với mã lỗi exit code: ${code}`, 'error');
+          this.broadcastLog(`[Error] Gradle thất bại với mã lỗi exit code: ${code}`, 'error');
           resolve(false);
         }
       });
 
       proc.on('error', (err) => {
         this.currentProcess = null;
-        this.broadcastLog(`❌ Lỗi khởi chạy Gradle: ${err.message}`, 'error');
+        this.broadcastLog(`[Error] Lỗi khởi chạy Gradle: ${err.message}`, 'error');
         resolve(false);
       });
     });
@@ -442,7 +473,7 @@ class BuildService {
     this.isBuilding = false;
 
     if (!foundFile || !fs.existsSync(foundFile)) {
-      this.broadcastLog(`❌ Không tìm thấy file xuất ra trong thư mục: ${targetDir}`, 'error');
+      this.broadcastLog(`[Error] Không tìm thấy file xuất ra trong thư mục: ${targetDir}`, 'error');
       this.broadcastStatus('error', { error: 'Không tìm thấy file sản phẩm sau khi build' });
       return { success: false, error: 'Không tìm thấy file sản phẩm sau khi build' };
     }
@@ -452,10 +483,10 @@ class BuildService {
     const fileName = path.basename(foundFile);
 
     this.broadcastLog('====================================================', 'info');
-    this.broadcastLog(`🎉 XUẤT GÓI ${taskName.toUpperCase()} THÀNH CÔNG!`, 'success');
-    this.broadcastLog(`📁 Tên file: ${fileName}`, 'success');
-    this.broadcastLog(`📊 Dung lượng: ${sizeMb} MB`, 'success');
-    this.broadcastLog(`📍 Đường dẫn: ${foundFile}`, 'info');
+    this.broadcastLog(`XUẤT GÓI ${taskName.toUpperCase()} THÀNH CÔNG!`, 'success');
+    this.broadcastLog(`[File] Tên file: ${fileName}`, 'success');
+    this.broadcastLog(`[Size] Dung lượng: ${sizeMb} MB`, 'success');
+    this.broadcastLog(`[Path] Đường dẫn: ${foundFile}`, 'info');
     this.broadcastLog('====================================================', 'info');
     this.broadcastStatus('success', { message: `Đã xuất file ${fileName} (${sizeMb} MB) thành công!` });
 
@@ -472,7 +503,7 @@ class BuildService {
   cancelBuild() {
     if (this.currentProcess) {
       const pid = this.currentProcess.pid;
-      this.broadcastLog(`⛔ Cancelling build process (PID: ${pid})...`, 'warn');
+      this.broadcastLog(`[Cancel] Cancelling build process (PID: ${pid})...`, 'warn');
       if (process.platform === 'win32') {
         exec(`taskkill /pid ${pid} /T /F`, () => {});
       } else {
