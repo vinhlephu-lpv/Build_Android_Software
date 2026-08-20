@@ -7,7 +7,41 @@
     "start": "node server.js",
     "dev": "node server.js",
     "app": "electron .",
-    "electron": "electron ."
+    "electron": "electron .",
+    "dist": "electron-builder --win",
+    "dist:portable": "electron-builder --win portable",
+    "dist:dir": "electron-builder --dir"
+  },
+  "build": {
+    "appId": "com.aurasoft.buildandroidsoftware",
+    "productName": "Build Android Software",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Build Android Software"
+    },
+    "files": [
+      "electron/**/*",
+      "public/**/*",
+      "src/**/*",
+      "server.js",
+      "package.json"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/esbuild/**/*"
+    ]
   },
   "keywords": [
     "react-native",
@@ -38,6 +72,7 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "electron": "^43.4.0"
+    "electron": "^43.4.0",
+    "electron-builder": "^25.1.8"
   }
 }

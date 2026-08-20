@@ -1455,7 +1455,7 @@ async function startBuild() {
     });
     appendBuildLog({
       level: 'info',
-      message: `[Device] Google Pixel 8 Pro (Android 14 API 34 / Standalone Virtual)`
+      message: `[Device] Điện Thoại Ảo Độc Lập (Standalone Virtual Phone Engine)`
     });
     appendBuildLog({
       level: 'info',
@@ -1837,8 +1837,7 @@ function updateBuildStatus(statusData) {
     }
     if (monitorStageTitle) monitorStageTitle.textContent = msg;
     if (monitorSubText) {
-      const devName = state.selectedDevice === 'virtual' ? 'Máy Ảo Nội Bộ (Standalone Web)' : `Google Pixel 7 (${state.selectedDevice})`;
-      monitorSubText.textContent = `Target: ${devName}`;
+      monitorSubText.textContent = 'Target: Máy Ảo Độc Lập (Virtual Engine)';
     }
     if (monitorPercent) monitorPercent.textContent = `${prog}%`;
   } else {

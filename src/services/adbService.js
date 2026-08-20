@@ -73,7 +73,7 @@ class AdbService {
                            model.toLowerCase().includes('subsystem');
 
         if (model.toLowerCase().includes('sdk gphone') || model.toLowerCase().includes('sdk_gphone')) {
-          model = 'Google Pixel 7 (Android 14)';
+          model = 'Android Virtual Device';
         }
 
         devices.push({

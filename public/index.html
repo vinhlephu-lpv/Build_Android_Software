@@ -212,23 +212,13 @@
 
             <!-- Environment Select & Profile & Tags -->
             <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-              <select id="deviceSelect" class="select-input-sm" onchange="onDeviceChanged(this.value)" style="font-size: 0.72rem; padding: 4px 6px;">
-                <option value="virtual" selected>Máy Ảo Nội Bộ (Standalone Web)</option>
-              </select>
-              <button id="btnRefreshDevices" class="icon-btn-sm" onclick="refreshDevices()" title="Làm mới danh sách thiết bị & máy ảo">
-                <svg class="v-icon text-cyan" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
-                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+              <span class="tag" style="background: rgba(0, 240, 255, 0.12); border: 1px solid rgba(0, 240, 255, 0.35); color: #00f0ff; font-size: 0.72rem; font-weight: 700; padding: 4px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px;">
+                <svg class="v-icon text-cyan" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <rect x="5" y="2" width="14" height="20" rx="3"></rect>
+                  <line x1="12" y1="18" x2="12" y2="18.01"></line>
                 </svg>
-              </button>
-              <button class="icon-btn-sm" onclick="quickScanThirdPartyEmulators()" title="Tự động quét & kết nối giả lập LDPlayer, Nox, MuMu, WSA">
-                <svg class="v-icon text-emerald" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="22" y1="12" x2="18" y2="12"></line>
-                  <line x1="6" y1="12" x2="2" y2="12"></line>
-                  <line x1="12" y1="6" x2="12" y2="2"></line>
-                  <line x1="12" y1="22" x2="12" y2="18"></line>
-                </svg>
-              </button>
+                <span>Máy Ảo Độc Lập</span>
+              </span>
               <select id="colorProfileSelect" class="select-input-sm" onchange="setColorProfile(this.value)" style="font-size: 0.72rem; padding: 4px 6px;">
                 <option value="natural" selected>Màu Chuẩn 1:1 (Bit-Exact)</option>
                 <option value="vivid">AMOLED Tươi (Vivid P3)</option>
@@ -315,7 +305,7 @@
                   <div class="monitor-spinner" id="monitorSpinner"></div>
                   <div>
                     <div class="monitor-title" id="monitorStageTitle">Đang biên dịch mã nguồn...</div>
-                    <div style="font-size: 0.68rem; color: var(--text-dim);" id="monitorSubText">Google Pixel 7 (Android 14)</div>
+                    <div style="font-size: 0.68rem; color: var(--text-dim);" id="monitorSubText">Máy Ảo Độc Lập (Virtual Engine)</div>
                   </div>
                 </div>
                 <div class="monitor-meta">
@@ -363,7 +353,7 @@
                     </svg>
                     Thiết bị ảo hóa:
                   </span>
-                  <strong class="info-val" id="infoDeviceModel">Google Pixel 8 Pro (Standalone)</strong>
+                  <strong class="info-val" id="infoDeviceModel">Điện Thoại Ảo Độc Lập (Virtual Phone)</strong>
                 </div>
                 <div class="info-card">
                   <span class="info-label" style="display: flex; align-items: center; gap: 6px;">
@@ -376,7 +366,7 @@
                     </svg>
                     Hệ điều hành:
                   </span>
-                  <strong class="info-val" id="infoAndroidVer">Android 14 (API 34 - UpsideDownCake)</strong>
+                  <strong class="info-val" id="infoAndroidVer">Android Flagship Engine (Pure Standalone)</strong>
                 </div>
                 <div class="info-card">
                   <span class="info-label" style="display: flex; align-items: center; gap: 6px;">
@@ -385,7 +375,7 @@
                     </svg>
                     Độ phân giải Viewport:
                   </span>
-                  <strong class="info-val" id="infoResolution">1080 x 2400 px (390 x 820 CSS @ 88% Scale)</strong>
+                  <strong class="info-val" id="infoResolution">1080 x 2400 px (390 x 844 CSS @ 90% Scale)</strong>
                 </div>
                 <div class="info-card">
                   <span class="info-label" style="display: flex; align-items: center; gap: 6px;">

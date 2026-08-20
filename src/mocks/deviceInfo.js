@@ -1,10 +1,10 @@
 const DeviceInfo = {
   getUniqueId: async () => 'virtual-android-uuid-1234',
-  getDeviceId: () => 'Pixel_8_Virtual',
+  getDeviceId: () => 'VirtualPhone_Standalone',
   getSystemName: () => 'Android',
   getSystemVersion: () => '14',
-  getBrand: () => 'Google',
-  getModel: () => 'Pixel 8 (Standalone Simulator)',
+  getBrand: () => 'VirtualPhone',
+  getModel: () => 'Virtual Phone (Standalone Engine)',
   getBuildNumber: () => '1.0.0',
   getVersion: () => '1.0.0',
   getBundleId: () => 'com.virtual.app',

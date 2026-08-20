@@ -99,7 +99,7 @@ Dự án **Build Android Software** được phát triển nhằm phục vụ nh
 - [ ] 🌐 **Network Inspector & API Mocking**:
   - Bắt gói tin HTTP/HTTPS, kiểm tra request/response của React Native tương tự Flipper/Charles Proxy.
 - [ ] 🎨 **Quản lý đa thiết bị & Tùy biến Màn hình (Device Profiles)**:
-  - Lựa chọn nhiều kích cỡ màn hình khác nhau (Pixel 7, Galaxy S24, Tablet, Màn hình gập Fold).
+  - Lựa chọn nhiều kích cỡ màn hình khác nhau (Điện thoại Flagship, Tablet, Màn hình gập Fold).
   - Điều chỉnh DPI, tỷ lệ hiển thị, theme Sáng/Tối hệ thống (Dark/Light mode toggle).
 
 ---

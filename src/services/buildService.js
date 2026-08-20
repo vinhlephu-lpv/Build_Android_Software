@@ -118,7 +118,7 @@ class BuildService {
     this.buildHistory = [];
     const startTime = Date.now();
 
-    const deviceLabel = serial ? (serial.startsWith('emulator-') ? 'Google Pixel 7 (Android Emulator)' : serial) : 'Thiết bị mặc định';
+    const deviceLabel = serial ? serial : 'Máy Ảo Độc Lập';
 
     this.broadcastStatus('compiling', { message: `[1/6] Chuẩn bị môi trường build cho ${deviceLabel}...`, progress: 10 });
 

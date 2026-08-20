@@ -8,13 +8,11 @@ const { WebSocketServer } = require('ws');
 const open = require('open');
 
 const adbService = require('./src/services/adbService');
-const streamerService = require('./src/services/streamerService');
 const metroService = require('./src/services/metroService');
 const buildService = require('./src/services/buildService');
 const logcatService = require('./src/services/logcatService');
 const standaloneRunnerService = require('./src/services/standaloneRunnerService');
 const watcherService = require('./src/services/watcherService');
-const emulatorService = require('./src/services/emulatorService');
 
 const app = express();
 const server = http.createServer(app);
@@ -220,70 +218,8 @@ app.post('/api/device/text', async (req, res) => {
 });
 
 // ==========================================
-// REST APIs: Android Emulator (AVD) & Third-Party Emulators
+// REST APIs: Device Control & Package Build
 // ==========================================
-
-app.get('/api/emulator/list', async (req, res) => {
-  try {
-    const avds = await emulatorService.listAvds();
-    res.json({ success: true, avds });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post('/api/emulator/start', async (req, res) => {
-  const { avdName, wipeData, gpu } = req.body;
-  if (!avdName) return res.status(400).json({ success: false, error: 'avdName is required' });
-
-  buildService.broadcastLog(`====================================================`, 'info');
-  buildService.broadcastLog(`[Emulator] KHỞI ĐỘNG MÁY ẢO ANDROID: ${avdName}`, 'info');
-  buildService.broadcastLog(`====================================================`, 'info');
-
-  try {
-    const result = await emulatorService.startEmulator(avdName, { wipeData, gpu }, (msg, level) => {
-      buildService.broadcastLog(msg, level);
-    });
-    res.json(result);
-  } catch (err) {
-    buildService.broadcastLog(`[Error] Không thể khởi động máy ảo: ${err.message}`, 'error');
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post('/api/emulator/stop', async (req, res) => {
-  const { serial } = req.body;
-  try {
-    const result = await emulatorService.stopEmulator(serial);
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post('/api/emulator/create', async (req, res) => {
-  const { name, systemImage, device } = req.body;
-  try {
-    buildService.broadcastLog(`[AVD] Đang tạo máy ảo mới: ${name || 'Pixel_7_API_34'}...`, 'info');
-    const result = await emulatorService.createDefaultAvd(name, systemImage, device);
-    buildService.broadcastLog(`${result.message}`, 'success');
-    res.json(result);
-  } catch (err) {
-    buildService.broadcastLog(`[Error] Lỗi tạo máy ảo: ${err.message}`, 'error');
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post('/api/emulator/scan-third-party', async (req, res) => {
-  try {
-    const results = await emulatorService.scanAndConnectAllThirdParty((msg, level) => {
-      buildService.broadcastLog(msg, level);
-    });
-    res.json({ success: true, results });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
 
 // Start Build & Run on Real / ADB Device
 app.post('/api/build/start', async (req, res) => {
@@ -573,35 +509,20 @@ app.get('/api/device/screenshot', async (req, res) => {
 });
 
 // ==========================================
-// WebSockets Hub
+// WebSockets Hub (Real-time Build & App Logs)
 // ==========================================
-const wssStream = new WebSocketServer({ noServer: true });
 const wssLogs = new WebSocketServer({ noServer: true });
 
 server.on('upgrade', (request, socket, head) => {
   const pathname = request.url;
 
-  if (pathname === '/ws/stream') {
-    wssStream.handleUpgrade(request, socket, head, (ws) => {
-      wssStream.emit('connection', ws, request);
-    });
-  } else if (pathname === '/ws/logs') {
+  if (pathname === '/ws/logs') {
     wssLogs.handleUpgrade(request, socket, head, (ws) => {
       wssLogs.emit('connection', ws, request);
     });
   } else {
     socket.destroy();
   }
-});
-
-wssStream.on('connection', (ws) => {
-  ws.on('message', (message) => {
-    streamerService.handleInputMessage(ws, message);
-  });
-
-  ws.on('close', () => {
-    streamerService.stopStream(ws);
-  });
 });
 
 wssLogs.on('connection', (ws) => {
