@@ -8,28 +8,28 @@
     "dev": "node server.js",
     "app": "electron .",
     "electron": "electron .",
-    "dist": "electron-builder --win",
-    "dist:portable": "electron-builder --win portable",
-    "dist:dir": "electron-builder --dir"
+    "dist": "electron-builder --win portable"
   },
   "build": {
     "appId": "com.aurasoft.buildandroidsoftware",
     "productName": "Build Android Software",
+    "compression": "store",
     "directories": {
       "output": "dist"
     },
     "win": {
       "target": [
-        "portable",
-        "nsis"
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Build Android Software"
+    "portable": {
+      "unpackDirName": "BuildAndroidSoftware_App",
+      "requestExecutionLevel": "user"
     },
     "files": [
       "electron/**/*",
@@ -47,10 +47,7 @@
     "react-native",
     "android",
     "simulator",
-    "builder",
-    "adb",
-    "scrcpy",
-    "metro"
+    "builder"
   ],
   "author": "Antigravity",
   "license": "MIT",
